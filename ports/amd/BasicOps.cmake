@@ -24,3 +24,7 @@ foreach(_test rmsnorm gated_rmsnorm residual_add gelu silu_mul embedding hadamar
 endforeach()
 ninfer_add_gpu_test(ninfer_amd_speculative_transforms
   ninfer_amd_speculative_round_op_test 30 --transforms-only)
+option(NINFER_AMD_GDN "Build native GDN and its original numerical qualification suites" OFF)
+if(NINFER_AMD_GDN)
+  include("${CMAKE_CURRENT_LIST_DIR}/Gdn.cmake")
+endif()

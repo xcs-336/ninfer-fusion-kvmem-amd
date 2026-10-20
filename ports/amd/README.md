@@ -39,7 +39,7 @@ HIPIFY 原许可保留在生成目录。生成阶段不自动翻译 PTX；生产
 
 ## 生产算子本机资格验证
 
-2026-10-20 当前整组共 48 项：46 项通过、KV 借用隔离失败、完整推测解码测试触及
+2026-10-20 首轮生产套件共 48 项：46 项通过、KV 借用隔离失败、完整推测解码测试触及
 60 秒时间限制。30 个基础算子测试中 29 个通过，覆盖归一化、embedding、卷积、采样、
 MTP round、位置、scatter、激活和输出 logprob。所有原有数学 oracle 和误差判据保留。
 推测解码有大量 CPU oracle 工作，需进一步定位或按原有专项模式拆分验证；超时没有算作通过。
@@ -62,9 +62,30 @@ GGUF 的既有 GGML GPU 桥已使用其原生 HIP/RDNA4 WMMA 路径编译，未�
 SHA256 为 `db9b1142727f3eaf037d888da133029cd21d9fbe15cfc707be7b9633ae080323`。
 这消除了 embedding 的真实依赖缺口；GGUF 各量化格式的矩阵数值验证尚未完成。
 
+### GDN 的原生 FP32 路径
+
+RDNA4 的 WMMA 没有 TF32 输入类型（见 [AMD 精度支持表](https://rocm.docs.amd.com/en/develop/reference/precision-support.html)
+及 [RDNA4 WMMA 指令](https://rocm-handbook.amd.com/projects/amd-rocm-optimization-guide/en/develop/compiler-builtins/rdna/rdna4-dense-wmma-builtins.html)）。
+GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算完整 FP32 乘加，
+保留 Op 的显式状态/存储转换；没有 BF16 降精度、TF32 位级等价或 Tensor Core 吞吐的承诺。
+片段坐标依据 [NVIDIA PTX 的 m16n8k8 定义](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#warp-level-matrix-fragment-mma-1688)。
+
+该生产适配已用 1,088 个矩阵验证：1,024 个精确基底/累加样例、64 个保留全部 FP32 尾数位的
+有限正常数样例，独立行列布局 FP64 oracle。32/128 线程、1/3 次累加、float/bits 两种调用共
+8 组通过，检查 1,114,112 个输出；最大相对 L2 为 5.9051e-8，输入和保护区完好。
+这里没有覆盖 NaN/Inf/非正规 FP32 输入，也不代表 GDN 或整个模型已验收。
+
+加 `-DNINFER_AMD_GDN=ON`（同时启用 Core/Basic Ops）可编译原有 GDN 的完整家族，
+包括 recurrent、WY/state-passing/output、two-stage、状态转换与 replay-record。
+4 个原有数值测试已编译链接，正在独立验证；`test_gdn_replay_fold` 还依赖尚未迁移的
+输入投影融合家族，保留在上游，需随该依赖一起验收，不能计作通过。
+仅在 GDN 的 `FoldAccess` 上将 NVIDIA `__grid_constant__` 优化限定符改为 HIP const 值参数；
+其方法不跨线程发布参数地址。其他 TMA 描述符未作同样转换。
+
 | NVIDIA 机制 | 当前 AMD 实现与边界 |
 |---|---|
 | BF16 Tensor Core MMA | gfx1201 原生 WMMA，已验证片段与上述生产 GEMM kernel |
+| GDN TF32 MMA | 原生 FP32 SIMD FMA + wave32 shuffle；片段数学验证通过，GDN 整体待验收 |
 | ldmatrix x2/x4、转置 | 原生 LDS 装载及 wave32 shuffle，精确布局测试通过 |
 | CUB 排序 | hipCUB，采样原测试通过；完整推测解码长套件尚未通过 |
 | cp.async / pipeline copy | 先用逐线程完成的 HIP 全局→LDS 复制保持依赖；尚无异步重叠性能结论 |
@@ -114,6 +135,18 @@ AMD 上游也记录过尺寸相关的
 gfx1201 编译检查与运行时 wave32 设备检查。没有改动矩阵坐标映射或放宽数值判据。
 
 ## 后续接入边界
+
+### 本机正式接入条件
+
+用户要求：只有测试证明显著优于 llama.cpp，才与本地模型部署会话协作正式迁移已有工作。
+该条件尚未满足。算子通过、单个 kernel 耗时和 NVIDIA 上游数据都不能替代这个结论。
+
+完整 Engine 可运行后，应在同一 RX 9070 上交替测量同一模型、解码后相同的权重/量化语义、
+相同上下文与 KV 正确性边界、并发和采样配置，保留构建参数及 GPU/RAM 预算。
+分别记录 prefill、decode、首 token 延迟、稳态与峰值内存和失败率；重复交替运行以排除测量波动。
+若量化、历史保留范围或输出质量不同，只能报告相应配置的取舍，不能直接声称后端更快。
+确认主要工作负载的收益明显超过波动、质量/稳定性和资源约束满足要求后，再与部署会话接入
+其现有调用和配置，并复测实际工作流。当前尚无端到端优势或已完成正式迁移的声明。
 
 后续必须完成内存借用、其他算子/矩阵格式、attention、AMD 调度和完整 Engine 的接入。
 AMD gfx1201 不能当作 NVIDIA sm_120 使用，NVIDIA 路由表与性能数字也不适用于本卡。

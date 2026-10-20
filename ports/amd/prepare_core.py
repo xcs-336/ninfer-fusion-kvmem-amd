@@ -61,6 +61,12 @@ for source in sources:
         text = text.replace(f'<{original}>', f'<{replacement}>')
     text = re.sub(r'<cub/([^>]+)\.cuh>', r'<hipcub/\1.hpp>', text)
     text = word.sub(lambda m: pairs.get(m[0], m[0]), text)
+    if str(relative).replace('\\', '/') == 'src/ops/linear_attention/gated_delta_net/recurrent.cuh':
+        # FoldAccess is a const value descriptor. Its methods use the fields,
+        # never publish its parameter address across threads. HIP's ordinary
+        # const value parameter preserves these semantics; no grid-address
+        # optimization is claimed. Unqualified TMA descriptors are left alone.
+        text = text.replace('const __grid_constant__ FoldAccess', 'const FoldAccess')
     if source.name == 'sampling_device.cuh':
         for scalar in ('unsigned long long', 'unsigned int'):
             text = text.replace(f'hipcub::WarpMergeSort<{scalar}, kSamplerItemsPerThread>',

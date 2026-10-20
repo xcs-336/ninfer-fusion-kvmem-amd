@@ -2,7 +2,7 @@
 
 > **AMD 迁移开发版（2026-10-20）**：本 fork 面向 Windows / AMD RX 9070，适配入口见
 > [ports/amd](ports/amd/README.md)。基础算子与生产 BF16 GEMM 内核已接入原生 HIP；
-> 当前整组测试 46/48 通过，VMM 隔离和推测解码长测试仍待解决，完整 Engine 尚未跑通。
+> 首轮生产套件 46/48 通过，VMM 隔离和推测解码长测试仍待解决，完整 Engine 尚未跑通。
 > 下文保留的是上游 NVIDIA 功能与性能说明，
 > 不能作为本 fork 的 AMD 支持或性能承诺。
 
