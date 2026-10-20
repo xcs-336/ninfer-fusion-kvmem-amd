@@ -386,7 +386,7 @@ Options parse_options(int argc, char** argv) {
         } else if (arg == "--no-prefill-a8") {
             options.prefill_a8 = false;
         } else if (arg == "--lookup-ngram") {
-            options.speculative.lookup_ngram = parse_u32(value("--lookup-ngram"), "lookup-ngram");
+            options.speculative.lookup_ngram = parse_u32(value("--lookup-ngram"), "lookup-ngram", true);
         } else if (arg == "--mtp-attention-window") {
             options.speculative.mtp_attention_window =
                 parse_u32(value(arg), "mtp-attention-window", true);

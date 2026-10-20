@@ -390,7 +390,7 @@ BenchOptions parse_args(int argc, char** argv) {
         } else if (arg == "--no-prefill-a8") {
             options.prefill_a8 = false;
         } else if (arg == "--lookup-ngram") {
-            options.speculative.lookup_ngram = parse_u32(value("--lookup-ngram"), "lookup-ngram");
+            options.speculative.lookup_ngram = parse_u32(value("--lookup-ngram"), "lookup-ngram", true);
         } else if (arg == "--prefill-cublas") {
             options.prefill_cublas = true;
         } else if (arg == "--no-prefill-cublas-projections") {

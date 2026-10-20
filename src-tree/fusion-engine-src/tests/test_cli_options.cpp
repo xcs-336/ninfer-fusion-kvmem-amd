@@ -269,6 +269,20 @@ int run_tests() {
                           route.speculative.backend == ninfer::SpeculativeBackend::Mtp &&
                           route.speculative.draft_tokens == 3,
                       "CLI did not parse the cuBLAS prefill and context-lookup controls");
+    const ninfer::cli::Options lookup_disabled =
+        parse({"ninfer-cli", "model.ninfer", "--prompt", "hello", "--spec", "mtp", "--draft-tokens",
+               "3", "--lookup-ngram", "5", "--lookup-ngram", "0"});
+    failures += check(lookup_disabled.speculative.lookup_ngram == 0 &&
+                          lookup_disabled.speculative.backend == ninfer::SpeculativeBackend::Mtp &&
+                          lookup_disabled.speculative.draft_tokens == 3,
+                      "CLI explicit zero did not disable lookup independently of MTP");
+    for (const char* invalid : {"-1", "1.5"}) {
+        failures += check(rejects([&] {
+                              (void)parse({"ninfer-cli", "model.ninfer", "--prompt", "hello",
+                                           "--lookup-ngram", invalid});
+                          }),
+                          "CLI admitted a negative or noninteger lookup width");
+    }
     for (const char* flag : {"--prefill-cublas", "--no-prefill-cublas-projections", "--lookup-ngram"}) {
         failures += check(help.find(flag) != std::string::npos,
                           "CLI help omits an accepted prefill or drafting control");

@@ -248,6 +248,21 @@ int test_cli_contract() {
                            route.speculative.lookup_ngram == 5 &&
                            route.speculative.backend == ninfer::SpeculativeBackend::Mtp,
                        "benchmark cuBLAS prefill and context-lookup controls");
+    const qb::BenchOptions lookup_disabled =
+        parse_for_test({"ninfer_bench", "--weights", "model.ninfer", "--spec", "mtp",
+                        "--draft-tokens", "3", "--lookup-ngram", "5", "--lookup-ngram", "0"});
+    failures += expect(lookup_disabled.speculative.lookup_ngram == 0 &&
+                           lookup_disabled.speculative.backend == ninfer::SpeculativeBackend::Mtp &&
+                           lookup_disabled.speculative.draft_tokens == 3,
+                       "benchmark explicit zero did not disable lookup independently of MTP");
+    for (const char* invalid : {"-1", "1.5"}) {
+        failures += expect_throws<std::invalid_argument>(
+            [&] {
+                (void)parse_for_test(
+                    {"ninfer_bench", "--weights", "model.ninfer", "--lookup-ngram", invalid});
+            },
+            "negative or noninteger benchmark lookup width");
+    }
     for (const char* flag : {"--prefill-cublas", "--no-prefill-cublas-projections", "--lookup-ngram"}) {
         failures += expect(qb::usage_text("ninfer_bench").find(flag) != std::string::npos,
                            std::string("benchmark help omits ") + flag);
