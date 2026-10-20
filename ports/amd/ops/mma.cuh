@@ -1,6 +1,10 @@
 #pragma once
+#include "ops/common/mma_nvfp4_gfx12.cuh"
 #include "ops/common/ldmatrix.cuh"
 #include "ops/common/mma_bf16_gfx12.h"
+#include "ops/common/mma_f16_gfx12.cuh"
+#include "ops/common/mma_s8_gfx12.cuh"
+#include "ops/common/mma_fp8_gfx12.cuh"
 
 namespace ninfer::ops {
 // Existing production BF16 tile kernels keep their packed-register interface;

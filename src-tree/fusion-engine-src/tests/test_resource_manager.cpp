@@ -579,7 +579,9 @@ struct FakePhysicalUsage {
 
 class FakeProgram;
 
-class FakePressurePlanningSession {
+// This fake implements the recency ladder exercised below, just like Qwen3.5's
+// production pressure session. Opt in to that explicit planner contract.
+class FakePressurePlanningSession : public ninfer::runtime::RecencyLadderSupported {
 public:
     FakePressurePlanningSession(FakeProgram& program,
                                 std::span<const FakeAdmissionCandidate* const> candidates,
@@ -2064,6 +2066,7 @@ FakeProgram::begin_pressure_planning(std::span<const FakeAdmissionCandidate* con
 }
 
 struct FakeModelContract {
+    using CapturePressurePlanningSession = FakePressurePlanningSession;
     using Program                    = FakeProgram;
     using PreparedPrompt             = FakePreparedPrompt;
     using RequestBasePlan            = FakeRequestBasePlan;

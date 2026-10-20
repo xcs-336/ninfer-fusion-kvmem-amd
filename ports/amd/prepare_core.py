@@ -23,6 +23,7 @@ pairs.pop('__CUDA_ARCH__', None)
 pairs['__CUDACC__'] = '__HIPCC__'
 pairs['cudaHostAlloc'] = 'hipHostMalloc'
 pairs['cudaFuncSetAttribute'] = 'ninfer_hip_func_set_attribute'
+pairs['__vsub4'] = 'ninfer_hip_vsub4'
 pairs['__float2bfloat16_rn'] = '__float2bfloat16'
 pairs['__floats2bfloat162_rn'] = 'ninfer_hip_floats2bfloat162_rn'
 pairs['__float2bfloat162_rn'] = 'ninfer_hip_float2bfloat162_rn'
@@ -33,6 +34,9 @@ for suffix in ('e4m3', 'e5m2'):
         pairs[f'__nv_fp8{width}_{suffix}'] = f'__hip_fp8{width}_{suffix}'
 pairs['__NV_E4M3'] = '__HIP_E4M3'
 pairs['__NV_E5M2'] = '__HIP_E5M2'
+for width in ('', 'x2', 'x4'):
+    pairs[f'__nv_fp4{width}_e2m1'] = f'__hip_fp4{width}_e2m1'
+pairs['__NV_E2M1'] = '__HIP_E2M1'
 pairs['cub'] = 'hipcub'
 for symbol in ('__shfl_sync', '__shfl_xor_sync', '__shfl_down_sync', '__shfl_up_sync',
                '__ballot_sync', '__all_sync', '__any_sync', '__syncwarp',
@@ -42,6 +46,7 @@ for symbol in ('__shfl_sync', '__shfl_xor_sync', '__shfl_down_sync', '__shfl_up_
 headers = {'cuda.h': 'hip/hip_runtime.h', 'cuda_runtime.h': 'hip/hip_runtime.h',
            'cuda_runtime_api.h': 'hip/hip_runtime_api.h', 'cuda_bf16.h': 'hip/hip_bf16.h',
            'cuda_fp16.h': 'hip/hip_fp16.h', 'cuda_fp8.h': 'hip/hip_fp8.h',
+           'cuda_fp4.h': 'hip/hip_fp4.h',
            'math_constants.h': 'hip/hip_math_constants.h', 'cublas_v2.h': 'hipblas/hipblas.h'}
 word = re.compile(r'\b[A-Za-z_][A-Za-z_0-9]*\b')
 
@@ -53,7 +58,7 @@ def write(relative, text):
 
 sources = [path for folder in ('src', 'include', 'tests') for path in (engine / folder).rglob('*')]
 for source in sources:
-    if not source.is_file() or source.suffix not in ('.h', '.cuh', '.cpp', '.cu'):
+    if not source.is_file() or source.suffix not in ('.h', '.hpp', '.cuh', '.cpp', '.cu'):
         continue
     relative = source.relative_to(engine)
     text = source.read_text(encoding='utf-8-sig')
@@ -61,6 +66,15 @@ for source in sources:
         text = text.replace(f'<{original}>', f'<{replacement}>')
     text = re.sub(r'<cub/([^>]+)\.cuh>', r'<hipcub/\1.hpp>', text)
     text = word.sub(lambda m: pairs.get(m[0], m[0]), text)
+    if relative.as_posix() == 'src/ops/linear/common/route_table.cpp':
+        # Shared by Attention/materialize and Linear. HIP's major/minor are not
+        # NVIDIA compute capabilities, and no RX 9070 performance bands exist.
+        text, count = re.subn(r'DeviceClass classify\(int device\) \{.*?\n\}',
+            'DeviceClass classify(int device) {\n'
+            '    (void)device;\n'
+            '    return DeviceClass::Unmeasured;\n}', text, flags=re.S)
+        if count != 1:
+            raise ValueError('expected exactly one common route-table device classifier')
     if str(relative).replace('\\', '/') == 'src/ops/linear_attention/gated_delta_net/recurrent.cuh':
         # FoldAccess is a const value descriptor. Its methods use the fields,
         # never publish its parameter address across threads. HIP's ordinary
@@ -71,6 +85,22 @@ for source in sources:
         for scalar in ('unsigned long long', 'unsigned int'):
             text = text.replace(f'hipcub::WarpMergeSort<{scalar}, kSamplerItemsPerThread>',
                                 f'hipcub::WarpMergeSort<{scalar}, kSamplerItemsPerThread, 32>')
+    if str(relative).replace('\\', '/') == 'src/ops/linear/nvfp4/nvfp4_codec.cuh':
+        start = text.index('__device__ __forceinline__ std::uint32_t pack_nvfp4_e2m1x8(')
+        end = text.index('// Sixteen bf16 values already in registers', start)
+        # Preserve E2M1 RNE/satfinite encoding and low-nibble-first order via
+        # the SDK constructor already used by the original 16-value path.
+        text = text[:start] + '''__device__ __forceinline__ std::uint32_t pack_nvfp4_e2m1x8(
+    const float2 (&values)[4]) {
+    std::uint32_t codes = 0;
+#pragma unroll
+    for (int pair = 0; pair < 4; ++pair) {
+        codes |= static_cast<std::uint32_t>(pack_e2m1x2(values[pair])) << (8 * pair);
+    }
+    return codes;
+}
+
+''' + text[end:]
     if source.name == 'ggml_bridge.cu':
         text = text.replace('facts[device].cc                     = 100 * properties.major + 10 * properties.minor;',
                             '''const std::string arch = properties.gcnArchName;
@@ -145,7 +175,8 @@ private:
 
 for filename in ('hip_vmm_address.h', 'hip_profiler.cpp', 'hip_intrinsics.h', 'pdl.cuh'):
     write(Path('src/core') / filename, (port / 'core' / filename).read_text(encoding='utf-8'))
-for filename in ('memory.cuh', 'ldmatrix.cuh', 'mma.cuh'):
+for filename in ('memory.cuh', 'ldmatrix.cuh', 'mma.cuh', 'mma_f16_gfx12.cuh', 'mma_s8_gfx12.cuh',
+                 'mma_fp8_gfx12.cuh', 'mma_nvfp4_gfx12.cuh'):
     write(Path('src/ops/common') / filename, (port / 'ops' / filename).read_text(encoding='utf-8'))
 write('src/ops/common/mma_bf16_gfx12.h', (port / 'gfx12-mma/mma_bf16_gfx12.h').read_text(encoding='utf-8'))
 write('HIPIFY-LICENSE.txt', table[:table.index('# IMPORTANT:')])

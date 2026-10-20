@@ -5,7 +5,8 @@
 
 当前是适配开发分支，完整 `.ninfer` Engine 尚未在 AMD 上编译或推理。
 Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 内核并验证；
-完整 Linear Op 调度、其他矩阵格式、attention 和模型执行仍需继续移植。
+其他矩阵片段、四套 GDN 和原生权重恢复/Graph 也已通过下述独立测试；
+完整 Linear Op、attention 和模型执行仍在接入。
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
 ## 已验证的硬件结果
@@ -36,6 +37,17 @@ HIPIFY 原许可保留在生成目录。生成阶段不自动翻译 PTX；生产
 
 加 `-DNINFER_AMD_BASIC_OPS=ON` 构建真实基础算子、其 GGUF 依赖和 30 个上游数值测试。
 它需要同时启用 `NINFER_AMD_CORE`。这不是完整的 Engine 构建目标。
+
+`NINFER_AMD_ATTENTION=ON` 接入全部原生产注意力/存储格式。context、sliding、packed、
+KV append/materialize/stream 的独立测试已实际编译链接，算术 GPU 验证正在进行；
+完整 causal 库仍待 O3 构建，不能把独立子库的链接当作全部注意力验收。
+`NINFER_AMD_LINEAR=ON` 接入原 public Linear 分派与格式家族，实际 O3 构建和数学资格进行中。
+两者都需要 Core 和 Basic Ops；不能借 HIP 的 major/minor 号选择 NVIDIA 调度表。
+
+`NINFER_AMD_ARTIFACT=ON` 构建真实 v3 reader/binder/materializer；该库及三个原测试已编译链接，
+读取/绑定 CPU 测试通过，GPU materialize/permute 和 Python writer 互通尚待运行。
+`NINFER_AMD_RUNTIME_SUPPORT=ON` 接入原 Engine 资源、上下文成本和 profile 支持库；
+它们是完整 Engine 的依赖，不是可运行模型的替代入口。
 
 ## 生产算子本机资格验证
 
@@ -73,19 +85,39 @@ GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算
 该生产适配已用 1,088 个矩阵验证：1,024 个精确基底/累加样例、64 个保留全部 FP32 尾数位的
 有限正常数样例，独立行列布局 FP64 oracle。32/128 线程、1/3 次累加、float/bits 两种调用共
 8 组通过，检查 1,114,112 个输出；最大相对 L2 为 5.9051e-8，输入和保护区完好。
-这里没有覆盖 NaN/Inf/非正规 FP32 输入，也不代表 GDN 或整个模型已验收。
+这里没有覆盖 NaN/Inf/非正规 FP32 输入，也不代表整个模型已验收。
 
 加 `-DNINFER_AMD_GDN=ON`（同时启用 Core/Basic Ops）可编译原有 GDN 的完整家族，
 包括 recurrent、WY/state-passing/output、two-stage、状态转换与 replay-record。
-4 个原有数值测试已编译链接，正在独立验证；`test_gdn_replay_fold` 还依赖尚未迁移的
+4 个原有数值测试已通过，包括 WY/recurrent、two-stage、FP16 状态和 replay-record。
+保留了原始 FP64 oracle、长序列、状态连续性和误差判据；其中 two-stage 覆盖 T=16,385。
+`test_gdn_replay_fold` 还依赖尚未迁移的
 输入投影融合家族，保留在上游，需随该依赖一起验收，不能计作通过。
 仅在 GDN 的 `FoldAccess` 上将 NVIDIA `__grid_constant__` 优化限定符改为 HIP const 值参数；
 其方法不跨线程发布参数地址。其他 TMA 描述符未作同样转换。
 
+### 其他矩阵片段
+
+同一 RX 9070 / Windows / clang 23 环境中，以下生产片段适配已通过共享 GPU 锁下的独立测试：
+
+| 输入与累加 | AMD 实现 | 数学证据 |
+|---|---|---|
+| FP16 → FP32 / FP16 | 原生 wave32 WMMA，保持两种不同的累加转换边界 | 2,180 个矩阵、8 组配置、2,232,320 个输出；基底、非正规数、正负零、溢出边界与 FP64 dense oracle |
+| signed INT8 → INT32 | 两次原生 INT8 WMMA；关闭饱和以保留原接口溢出回绕 | 4,176 个矩阵、4 组配置、2,138,112 个精确输出；全坐标基底、随机有符号输入与溢出 |
+| OCP FP8 E4M3 → FP32 | 两次原生 FP8 WMMA；保持 OCP 编码 | 4,706 个矩阵、4 组配置、2,409,472 个输出；全部 64,516 个有限编码对、FP32 非正规累加值与 FP64 oracle |
+| NVFP4 E2M1 + UE4M3 → FP32 | 当前寄存器片段精确展开为 FP16，再用四次原生 WMMA | 8,420 个矩阵、4 组配置、4,311,040 个输出；全部 2,032 个合法码×scale 精确解码、16,129 个 scale 对、忽略元数据 lane 的毒化检查 |
+
+以上均检查输入未修改和输出保护区。FP16 测试曾发现本机 clang 把半精度向量分量的
+`bit_cast` 始终读取为第 0 项；现改为整体向量位转换后索引，原判据复测通过。
+NVFP4 解码还发现本机编译器的融合半精度转换丢失负零符号；现显式保持结果符号位，
+全部精确检查通过，原 oracle 未改。该实现没有全局转换缓冲、运行时权重重打包或原生 FP4
+矩阵硬件的声明。这些片段结果也不能替代 public Linear、Attention 或完整 Engine 验收。
+
 | NVIDIA 机制 | 当前 AMD 实现与边界 |
 |---|---|
 | BF16 Tensor Core MMA | gfx1201 原生 WMMA，已验证片段与上述生产 GEMM kernel |
-| GDN TF32 MMA | 原生 FP32 SIMD FMA + wave32 shuffle；片段数学验证通过，GDN 整体待验收 |
+| GDN TF32 MMA | 原生 FP32 SIMD FMA + wave32 shuffle；片段及上述四个原 GDN 数学套件通过 |
+| FP16 / signed INT8 / OCP FP8 E4M3 MMA | gfx1201 原生 WMMA；上述片段测试通过，生产 Op 家族另行验收 |
 | ldmatrix x2/x4、转置 | 原生 LDS 装载及 wave32 shuffle，精确布局测试通过 |
 | CUB 排序 | hipCUB，采样原测试通过；完整推测解码长套件尚未通过 |
 | cp.async / pipeline copy | 先用逐线程完成的 HIP 全局→LDS 复制保持依赖；尚无异步重叠性能结论 |
@@ -93,7 +125,8 @@ GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算
 | CUDA Graph | HIP Graph，Core、归一化和生产 BF16 GEMM 路径已验证 |
 | NVTX | 原生 Windows ETW 范围事件；尚未验收 GPU 时间线关联 |
 | 稀疏 VMM 借用 | 独立诊断出现数据隔离失败、停滞或运行时崩溃，不能作为已支持能力 |
-| FP16/INT8/FP8/NVFP4 其他生产 MMA、TMA | 仍需移植与独立验收，不能按 NVIDIA SM 号选择 AMD 路由 |
+| NVFP4 block-scale MMA | 寄存器解码加四次原生 FP16 WMMA，片段数学通过；gfx1201 无原生 FP4 WMMA |
+| TMA 与 producer-only named barrier | 原生 LDS 装载和计数/代际屏障；独立屏障测试通过，完整 Op 数学另行验收 |
 
 上述测试不是吞吐或峰值显存基准；该轮有另一会话的模型测试重叠，耗时不作为性能比较。
 
@@ -102,7 +135,7 @@ GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算
 全部 CTest GPU 入口通过 `test_locked.py` 获得共享锁的 byte 0，再启动测试。当前协作主机
 显式配置 `-DNINFER_GPU_LOCK_FILE=D:/programfile/work/deepseek/cache/gpu-benchmark.lock`，
 与本地模型部署会话共用。其他机器用该选项指定各项目共同的锁路径。
-默认等候 300 秒；锁忙且到期返回 77，表示未运行，不是通过。
+默认等候 300 秒；本协作主机为新队列配置 1,800 秒。锁忙且到期返回 77，表示未运行，不是通过。
 测试完成释放锁后留 1.5 秒间隔，让另一会话能交替获取。
 
 子测试位于 Windows kill-on-close job 中，超时或外层取消时只结束本次测试及其子进程，
@@ -129,6 +162,20 @@ AMD 上游也记录过尺寸相关的
 [hipMemSetAccess 缺陷](https://github.com/ROCm/rocm-systems/issues/2516)，但尚未证实本机全部故障
 与其同根因。后续优先确认可用的内存映射路径，必要时为借用机制提供显式的复制方案；
 不能通过放宽隔离断言或忽略错误继续推理。
+
+### 已验证的原生权重借用
+
+权重池现用单次 `hipMalloc` 分配直接借出实际尾部，绕开故障 VMM alias/remap 路径。
+借出和恢复不额外分配显存，固定权重地址保持不变；不同借出大小返回各自的当前尾部地址。
+保留原来的 pinned-host 镜像，只恢复本次被借出的真实权重字节，其他窗口内修改保持原样。
+原始 full-arena 逐字节测试已通过；新增测试也验证了四次 workspace Graph 写入、稳定权重
+Graph 读取、不同/相同大小的地址语义、事务 move 与重复 close。
+调用方在 `VisionOverlaySession::begin` 按当前地址重新绑定，不能把某一次借出地址当作通用固定 overlay。
+具体契约与资源公式见 [memory/design.md](memory/design.md)。
+
+KV 的任意非连续空闲页拼成连续 workspace 仍需要可靠映射，不能用权重尾部方法冒充等价实现。
+建议先采用可证明完全空闲的物理连续 KV 段，无法满足时借用已验证的权重尾部；另一个方案是
+启动时预留并明确计入容量预算的 workspace。目前未实现这两项 KV 策略，也不宣称原非连续借用可用。
 
 本机兼容修正：原候选的 `-mwavefrontsize32` 改为编译器支持的 `-mno-wavefrontsize64`；
 本机编译器没有 `__AMDGCN_WAVEFRONT_SIZE` 宏，改用设备 wavefront-size 检查，另保留

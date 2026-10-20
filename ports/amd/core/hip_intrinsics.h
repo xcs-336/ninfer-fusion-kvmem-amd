@@ -2,6 +2,15 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_bf16.h>
 #include <hip/hip_fp16.h>
+
+// Four independent modulo-256 byte subtractions. A scalar 32-bit subtraction
+// would propagate borrow into the adjacent byte and corrupt packed INT4 signs.
+__host__ __device__ inline unsigned ninfer_hip_vsub4(unsigned left, unsigned right) {
+    using Byte4 = unsigned char __attribute__((ext_vector_type(4)));
+    const Byte4 a = __builtin_bit_cast(Byte4, left);
+    const Byte4 b = __builtin_bit_cast(Byte4, right);
+    return __builtin_bit_cast(unsigned, a - b);
+}
 template <class... Args>
 inline hipError_t ninfer_hip_func_set_attribute(void (*kernel)(Args...), hipFuncAttribute attribute,
                                                int value) {

@@ -1,8 +1,9 @@
 # NInfer Fusion KVMem
 
 > **AMD 迁移开发版（2026-10-20）**：本 fork 面向 Windows / AMD RX 9070，适配入口见
-> [ports/amd](ports/amd/README.md)。基础算子与生产 BF16 GEMM 内核已接入原生 HIP；
-> 首轮生产套件 46/48 通过，VMM 隔离和推测解码长测试仍待解决，完整 Engine 尚未跑通。
+> [ports/amd](ports/amd/README.md)。基础算子、BF16/FP16/INT8/FP8/NVFP4 矩阵原语、
+> 四套 GDN 数学测试和非 VMM 权重恢复/Graph 已通过本机验证；
+> Attention、public Linear 与完整 Engine 仍在接入，非连续 KV 借用及推测解码长套件尚未验收。
 > 下文保留的是上游 NVIDIA 功能与性能说明，
 > 不能作为本 fork 的 AMD 支持或性能承诺。
 

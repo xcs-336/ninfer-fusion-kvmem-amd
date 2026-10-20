@@ -4,7 +4,8 @@ add_executable(${target} "${source}")
 set_source_files_properties("${source}" PROPERTIES LANGUAGE CXX)
 target_include_directories(${target} PRIVATE "${ROCM_ROOT}/include")
 target_compile_definitions(${target} PRIVATE __HIP_PLATFORM_AMD__=1)
-target_compile_options(${target} PRIVATE -x hip --offload-arch=gfx1201 -mno-wavefrontsize64
+target_compile_options(${target} PRIVATE -x hip -fno-fast-math -ffp-contract=off
+  --offload-arch=gfx1201 -mno-wavefrontsize64
   "--rocm-path=${ROCM_ROOT}" "--rocm-device-lib-path=${ROCM_ROOT}/lib/llvm/amdgcn/bitcode")
 target_link_options(${target} PRIVATE --hip-link --offload-arch=gfx1201 "--rocm-path=${ROCM_ROOT}")
 target_link_libraries(${target} PRIVATE "${ROCM_ROOT}/lib/amdhip64.lib")
@@ -12,3 +13,6 @@ ninfer_add_gpu_test("native_${name}" ${target} 30)
 endfunction()
 ninfer_primitive_test(lds_fragments tests/lds_layout.hip)
 ninfer_primitive_test(format_codecs tests/format_codecs.hip)
+ninfer_primitive_test(matrix_f16 tests/matrix_f16.cu)
+ninfer_primitive_test(matrix_fp8 tests/matrix_fp8.cu)
+ninfer_primitive_test(matrix_nvfp4 tests/matrix_nvfp4.cu)
