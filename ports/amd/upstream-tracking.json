@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "upstream_repository": "1314521gjy/ninfer-fusion-kvmem",
+  "upstream_branch": "main",
+  "native_adopted_commit": "4e93bb8ab89b583653a9d16235582c688226ff05",
+  "last_source_reviewed_commit": "9a5a9204bfa3ea4af2220c8ca1e59c0b5b4f3cf6",
+  "last_source_review_date": "2026-10-21",
+  "review_scope": "All nine patches plus affected existing allocator/address-reference contracts; source review only.",
+  "tracking": {
+    "execution": "Existing local daily follow-up at09:00 Asia/Shanghai; this file is a published checkpoint, not a GitHub-hosted scheduler.",
+    "notify": "Meaningful source changes, actual results, failures or decisions.",
+    "automatic_merge": false
+  },
+  "pending": [
+    {
+      "commit": "30aa24d1eecba7e6f7e71f10cd082d023749c6cb",
+      "scope": "tooling/docs",
+      "adopted": false,
+      "notes": [
+        "NVIDIA memory constants need AMD measurements.",
+        "Sharded gateway responses do not qualify full-history attention.",
+        "Missing GPU samples and shard-cap enforcement need explicit handling."
+      ]
+    },
+    {
+      "commit": "9a5a9204bfa3ea4af2220c8ca1e59c0b5b4f3cf6",
+      "scope": "native Core/Models KV recovery and long-anchor caching",
+      "adopted": false,
+      "notes": [
+        "Rebuild the new materialize ABI across Core and all Models callers.",
+        "Prove active-address ownership and complete reader/transfer fences before page demotion.",
+        "Preserve outstanding reservations, typed borrowed IDs and mutation epochs.",
+        "Include resend, requested-answer and full-history assertions in recovery tests. The upstream fixed-arm predicate can report GREEN with resend-5 failed.",
+        "Keep fresh-root fallback semantically complete and qualify separate roomy-cache reuse and over-pool recovery."
+      ]
+    }
+  ],
+  "adoption_requirements": [
+    "Review representation, view ABI, physical ownership, exact mathematical semantics and supported execution envelopes.",
+    "Rebuild affected real native consumers and retain independent original oracles and full test domains.",
+    "Measure AMD performance/resources at the claimed scope; disclose effective history, quality, TTFT and throughput tradeoffs.",
+    "Formal local workflow migration still requires acceptable quality, full-history correctness and stability plus a reproducible speed or material resource/context benefit."
+  ],
+  "actual_new_upstream_runtime_tests": false,
+  "formal_migration_benefit_established": false
+}

@@ -3,6 +3,10 @@
 开发基线：`1314521gjy/ninfer-fusion-kvmem@4e93bb8ab89b583653a9d16235582c688226ff05`。
 主引擎位于 `src-tree/fusion-engine-src/`。保留其 KVMem 环、host-backed 复用和融合算子设计。
 
+长期追踪检查点见 [upstream-tracking.json](upstream-tracking.json)。上游源码已审阅至 `9a5a920`，
+原生采用基线仍为上面的 `4e93bb8`；新增 KV 回收改动须闭合接口和页引用所有权后再验收。
+现有本地每日任务负责后续检查，该 JSON 记录本次公开检查点。
+
 当前是适配开发分支。实际 public `.ninfer` Engine 与五个原产品已完成 AMD 构建，
 Bonsai BF16 KV 的非推测和 MTP2 首次短推理均通过。两次均输出 `AMD native.`，
 生成 token ID 相同。独立观测消费者随后也验证了两种模式的实际 HIP Graph 捕获、实例化
