@@ -5,10 +5,12 @@ and separate controlled-pending fixture. All three test sources are byte-identic
 copies of research fixtures that passed direct-command testing on native Windows
 RX 9070/gfx1201. Their delivery comments are retained for that byte identity.
 
-The first two CMake targets have actually built and linked successfully. Their
-CMake-produced executables have not yet been rerun. The third, newly added pending
-target is **NOT_BUILT / NOT_RUN through CMake**; its identical body passed the
-separate direct build/run. These distinctions must remain in result reports.
+All three repository CMake targets have now actually built and run successfully
+on Windows gfx1201 under the shared byte-0 lock and host guard. The first two
+executables reuse their earlier unchanged CMake build; the third was newly built
+in session67105. These actual repository runs have their own immutable receipt,
+`research/ninfer-kv-repo-v2-actual-summary.json`, separate from the earlier direct
+build/run records. This is isolated Core functional qualification only.
 
 The tests do not adapt DeviceKVPagePool, change the original VMM gate, supply a
 table-aware production Attention implementation, integrate Engine, or imply a
@@ -40,10 +42,15 @@ uniquely necessary under every driver schedule. Both HIP fixtures have
 rollback, original Attention math or production integration. CPU callback holds
 are test controls, not performance samples.
 
-The first two CMake targets linked in the successful 14-step build recorded by
-`ninfer-t2-vmem-build-v6-resource-retry.log` (session 49127, child exit 0), with
-both segmented executable link steps present. This is build evidence only;
-the direct-run results above are not relabeled as runs of the CMake executables.
+The first two CMake targets linked in the successful build recorded by
+`ninfer-t2-vmem-build-v6-resource-retry.log` (session49127, child exit0).
+The third linked in `ninfer-t2-timing-build-v6-first.log` (session67105, child
+exit0). All three CMake-produced executables then ran with child exit0 in
+`ninfer-kv-repo-v2-{plan,storage,pending}-run-first.log`: full21698 planner cases,
+one capture/four same-instance replays in each HIP fixture, and the same four
+NotReady/zero-fallback pending boundaries. Host guard minima were respectively
+5.157/5.095/5.130GiB. They are not sampled continuous resource peaks or measured
+savings. Old receipts which said NOT_BUILT/NOT_RERUN remain historical snapshots.
 
 ## Opt-in CMake targets
 
@@ -72,9 +79,9 @@ The CPU target compiles only host C++20 and links no HIP runtime or large Core
 archive. Each HIP target links its own transport/planner and the normal SDK import
 library through `ninfer_native_hip`; the helper selects real gfx1201/wave32 HIP
 compilation and the standard generated compatibility header. It does not link
-`ninfer_core_amd`. A link map is requested on the Windows toolchain. The new third
-compile context still needs its first build; all three CMake-produced executables
-need actual run checks before being counted as that reproducible path passing.
+`ninfer_core_amd`. A link map is requested on the Windows toolchain. All three
+repository build/run paths have passed at the narrow functional scope above;
+this does not qualify an original allocator or production Attention consumer.
 
 The GPU registration uses the repository's byte-0/process-tree cleanup wrapper,
 has a 120-second native timeout, prepends the configured SDK bin directory, and
