@@ -11,6 +11,7 @@ file(GLOB_RECURSE _core_inputs CONFIGURE_DEPENDS
   "${_engine}/bench/*.cpp" "${_engine}/bench/*.cu")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_core_inputs}
   "${CMAKE_CURRENT_LIST_DIR}/prepare_core.py" "${CMAKE_CURRENT_LIST_DIR}/core/hip_vmm_address.h"
+  "${CMAKE_CURRENT_LIST_DIR}/core/hip_graph_instantiate.h"
   "${CMAKE_CURRENT_LIST_DIR}/core/hip_profiler.cpp" "${CMAKE_CURRENT_LIST_DIR}/core/hip_intrinsics.h"
   "${CMAKE_CURRENT_LIST_DIR}/core/pdl.cuh" "${CMAKE_CURRENT_LIST_DIR}/ops/memory.cuh"
   "${CMAKE_CURRENT_LIST_DIR}/ops/ldmatrix.cuh" "${CMAKE_CURRENT_LIST_DIR}/ops/mma.cuh"
@@ -106,6 +107,10 @@ endif()
 option(NINFER_AMD_ENGINE "Build the original public Engine and complete fixed model implementations" OFF)
 if(NINFER_AMD_ENGINE)
   include("${CMAKE_CURRENT_LIST_DIR}/Engine.cmake")
+endif()
+option(NINFER_AMD_PRODUCTS "Build the original CLI, server, calibration, perplexity and inference benchmark" OFF)
+if(NINFER_AMD_PRODUCTS)
+  include("${CMAKE_CURRENT_LIST_DIR}/Products.cmake")
 endif()
 # Publish the fully adapted source view once. Configuring an unchanged family
 # must not change timestamps and trigger expensive device-code recompilation.

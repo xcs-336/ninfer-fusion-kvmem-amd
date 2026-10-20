@@ -94,12 +94,26 @@ All 197 native sources passed a first frontend sweep. After the common resource
 updates, the final GDN four and TopK fourteen sources plus the three grouped Q8
 callers, legacy NVFP4 decode and original GDN gating/replay-fold tests passed a
 24-source frontend recheck (`research/fused-resource-final-frontends.json` and
-`research/fused-grouped-final-frontends.json`, process terminal exit0). Full production
-archive builds, links and original numerical suites remain required. No fused
+`research/fused-grouped-final-frontends.json`, process terminal exit0). Original
+mathematical-suite links and execution remain required. No fused
 operator is marked GPU-qualified by source preparation or frontend success.
 The subsequent three complete integer-A8 NT admission closures and the independent
 Pair C256 boundary probe also passed a four-source frontend batch, terminal exit0
 (`research/fused-a8-boundary-final-frontends.json`).
+
+The subsequent complete shared O3 build produced all 197 native production objects
+and successfully archived all eight production family libraries plus the shared
+auxiliary library. Its first resource failure was repaired in the four unified
+grouped-Q8 callers described above; all four then produced real O3 objects. The
+latest aggregate build stopped at 203/235, terminal exit1, solely because the
+unchanged TopK graph test's three-argument CUDA instantiate call had been mapped
+to HIP's five-argument function (two template diagnostics at the same source
+line). Full evidence is `research/fusion-amd-fused-all-build.log` and
+`research/fusion-amd-fused-all-build-fixed.log`. A common, caller-local C++ overload
+adapter now forwards three arguments to `hipGraphInstantiateWithFlags` and five
+arguments to `hipGraphInstantiate`; actual regeneration/compilation and the
+remaining test links are pending the parent's next shared build window. No
+aggregate build or unexecuted mathematical suite is counted as passed.
 
 The standalone RMSNormRoPE production archive and unchanged original test executable
 subsequently compiled and linked successfully in that isolated folder (O3, one
@@ -157,9 +171,13 @@ before each complete suite, add those costs, and retain the parent's 2-GiB floor
 | Private W4 BLAS prefill | 1.1 GiB | Largest case K6144/T13057 holds activation, residual and full FP64 output with transient BF16 readback; about 0.92 GiB of explicit arrays. |
 | AttnInputProj | 0.35 GiB | BF16 parent 140 MiB plus 140-MiB preservation snapshot and 30-MiB FP32/BF16 activation; snapshots/output planes are checked sequentially. |
 | GDNInputProj | 0.25 GiB | Peak FP8 parent 80.031 MiB plus 30-MiB activation and 100-MiB QKV output readback. |
+| Replay-fold default | 1.35 GiB | At L48/physicalWidth32/capacity8, records are 436.5 MiB; generator planes and both full before/after snapshots coexist, about 1.288 GiB including slot-state readbacks. |
+| Replay-fold `--wide-only` | 2.7 GiB | PhysicalWidth64 doubles the record planes and two snapshots; about 2.567 GiB of explicit host arrays. |
 
 The input-projection helper decodes one FP64 weight row at a time (at most 40 KiB),
 and SwiGLU reads the packed weight directly in its FP64 oracle; neither retains a
-full FP32 weight matrix. Replay-fold has separate multi-layer record snapshots
-and needs its own admission audit before execution. These bounds do not qualify
+full FP32 weight matrix. Replay-fold records consume 37,248 bytes per column in
+the 48-head profile: conv 20,480, key 4,096, value 12,288 and g/beta 384. Its
+record-fold rounds use much smaller host arrays; the state pool for width32 is
+instead an approximately 4.8-GiB device allocation. These bounds do not qualify
 any numerical suite as passed.

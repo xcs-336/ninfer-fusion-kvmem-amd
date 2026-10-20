@@ -7,6 +7,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().with_name('products')))
 import platform_metadata
+import device_profile
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--engine', required=True, type=Path)
@@ -116,7 +117,7 @@ add_tests('tests/cmake/BenchSupportTests.cmake', {'ninfer_bench_support_test'})
 def edit(relative, transform):
     source = (view / relative).read_text(encoding='utf-8')
     marker = '// Native AMD product platform overlay.\n'
-    if not source.startswith(marker):
+    if marker not in source:
         write(relative, marker + transform(source))
 
 
@@ -129,6 +130,18 @@ edit('src/product/logging/startup_log.cpp', platform_metadata.startup_text)
 edit('apps/calibrate/main.cpp', platform_metadata.calibrate_hardware_class)
 write('src/product/amd_environment.h', (Path(__file__).with_name('products') /
       'native_environment.h').read_text(encoding='utf-8'))
+
+# This second overlay composes with the actual HIP metadata already written
+# above. Its independent marker also allows unchanged in-place reconfiguration
+# without reapplying either transform or changing output timestamps.
+for relative, transform in device_profile.TRANSFORMS:
+    path = output / relative
+    source = (path if path.is_file() else view / relative).read_text(encoding='utf-8')
+    marker = '// Native AMD product device-profile options overlay.\n'
+    if marker not in source:
+        write(relative, marker + transform(source))
+write('src/product/device_profile_options.h', (Path(__file__).with_name('products') /
+      'device_profile_options.h').read_text(encoding='utf-8'))
 
 # The original stamp script still generates the actual identity. Its compiled
 # source roots must also include this port, which lives outside the CUDA tree.
@@ -149,6 +162,9 @@ manifest['changes'] += [
      'guarantee': 'same native identity as actual Engine route-profile lookup; original NVIDIA formatter/tests retained'},
     {'mechanism': 'build-time source identity',
      'replacement': 'original Git build-id script also tracks the actual compiled AMD port and benchmark roots'},
+    {'mechanism': 'implicit auto route-profile calibration in the original CLI/bench/perplexity',
+     'replacement': 'explicit --device-profile auto|off|calibrate forwarded to the original Engine',
+     'guarantee': 'default auto retained; real measurement policy only; actual mode logged in CLI, benchmark table/JSON/CSV and perplexity report; original parser assertions retained and extended'},
 ]
 
 for name, paths in manifest['components'].items():

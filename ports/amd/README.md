@@ -3,10 +3,10 @@
 开发基线：`1314521gjy/ninfer-fusion-kvmem@4e93bb8ab89b583653a9d16235582c688226ff05`。
 主引擎位于 `src-tree/fusion-engine-src/`。保留其 KVMem 环、host-backed 复用和融合算子设计。
 
-当前是适配开发分支，完整 `.ninfer` Engine 尚未在 AMD 上编译或推理。
+当前是适配开发分支，完整 `.ninfer` Engine 尚未在 AMD 上完成构建或推理。
 Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 内核并验证；
 其他矩阵片段、四套 GDN 和原生权重恢复/Graph 也已通过下述独立测试；
-public Linear 的十套量化数学测试已通过；BF16 完整套件、causal attention 和模型执行仍在接入。
+public Linear 的十一套完整原数学测试已通过；causal attention 和模型执行仍在接入。
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
 ## 已验证的硬件结果
@@ -40,7 +40,7 @@ HIPIFY 原许可保留在生成目录。生成阶段不自动翻译 PTX；生产
 
 `NINFER_AMD_ATTENTION=ON` 接入全部原生产注意力/存储格式。context、sliding、packed、
 KV append/materialize/stream 的独立测试已实际编译链接。packed、sliding、context、
-KV stream、完整 KV append 及 selected-block 的下述数学测试通过；materialize 尚待运行。
+KV stream、完整 KV append、BF16 KV materialize 及 selected-block 的下述数学测试通过。
 完整 causal 库仍待 O3 构建，不能把独立子库的链接当作全部注意力验收。
 `NINFER_AMD_LINEAR=ON` 接入原 public Linear 分派与格式家族。140 个生产编译单元、共用依赖、
 十一套原数学可执行文件及有界探针已实际 O3 编译链接。
@@ -55,6 +55,15 @@ KV stream、完整 KV append 及 selected-block 的下述数学测试通过；ma
 候选选择、分组卷积、KVMem 和稀疏 MoE。`NINFER_AMD_ENGINE=ON` 的目标图读取完整原有
 public Engine、文本、媒体、模型 loading/runtime 和原测试清单，依赖上述真实生产库。
 这些新增目标尚未完成整体构建与运行，不是已验收的模型入口。
+
+197 个原融合生产编译单元及八个对应静态库已实际完成 O3 编译与归档。
+这轮构建曾在原 TopK 测试的 Graph API 签名适配处停止；类型安全适配修复后，Core Graph
+原测试及 TopK 完整数值/Graph 套件已通过，Pair 分组边界探针也通过。
+完整融合测试程序尚未全部链接或运行；combined GGUF 原测试补链接实际 SDK compiler-rt 后，
+已完成真实链接与全套数学验证，原 oracle 未改。
+原有超过 64 KiB LDS 的四处统一调度已通过实际编译，容量断言与数学 oracle 保留。
+`NINFER_AMD_PRODUCTS=ON` 现可接入原 CLI、serve、calibrate、perplexity 和推理 benchmark；
+其开关默认关闭，必须同时启用完整 Engine。完整产品目标图已实际配置通过，应用构建与运行仍待完成。
 
 原 artifact reader、admission、context cost、resource manager 和 prefix-cache index 的
 五套 CPU 测试均已在实际 CMake/O3 构建中通过。修正了原 resource-manager 测试夹具缺失的
@@ -78,9 +87,10 @@ NVFP4 A16/A4。保留全形状、原 FP64 oracle、输入保持、保护区、Gr
 
 完整原套件的 FP64 oracle 只物化 32 个采样行，输出也分块扫描，不持有整张 FP32 权重。
 逐套按实际压缩权重/副本预算准入，额外留 1 GiB 运行时与 2 GiB 系统余量；本轮十套均实际
-运行并通过，观测最低可用 RAM 2.902 GiB。BF16 原词表夹具的完整保护副本仍偏大，现已把
+运行并通过，观测最低可用 RAM 2.902 GiB。BF16 原词表夹具的完整保护副本原先偏大，现已把
 生成测试 helper 的 readback 改为至多 2 MiB 的全字节分块比较；全域和判据保留，完整 GPU
-复测尚待运行，不能把前端检查当作通过。
+复测也已通过，包括 248,320×5,120 词表原域与 FP64/Graph 检查，最低可用 RAM 3.417 GiB。
+至此十一套 public Linear 完整原数学套件均已有通过结果。
 
 融合 RMSNormRoPE 的原完整测试也已通过，包括与分拆路径的逐位比较和原数学 oracle。
 初测 19 处差异全部在 RoPE 后半通道；真实编译 IR 显示两条路径选择了不同的 FMA 收缩顺序。
@@ -107,7 +117,8 @@ HIPIFY 默认把 NVIDIA FP8 映射成 FNUZ，本适配显式改用 OCP 编码，
 GGUF 的既有 GGML GPU 桥已使用其原生 HIP/RDNA4 WMMA 路径编译，未切换模型运行引擎。
 恢复的 `vendors/hip.h` 来自同一固定上游提交 `a25c9865fe03c954c93fd755b5d79ae86ba99750`，
 SHA256 为 `db9b1142727f3eaf037d888da133029cd21d9fbe15cfc707be7b9633ae080323`。
-这消除了 embedding 的真实依赖缺口；GGUF 各量化格式的矩阵数值验证尚未完成。
+这消除了 embedding 的真实依赖缺口。GGUF Linear/LinearAdd/LinearSwiGLU 的原完整组合
+数值套件现已通过；它不代表所有外部 GGUF 模型都满足本仓的架构和控制权重格式合约。
 
 ### Attention 与精确缓存编码
 
@@ -121,7 +132,13 @@ Graph、保护区及输入保持，共 16 个样例，通过独立 FP64 oracle�
 除法，以及编译器正确舍入的除法/平方根模式。实际 O3 链接和全部原断言复测通过。
 没有使用 SDK 头文件中声明但本机设备库缺失的 rounded sqrt/div 符号。
 
-完整 causal attention 和 KV materialize 的数学资格仍待完成，以上不是端到端性能证据。
+完整 causal attention 的数学资格仍待完成，以上不是端到端性能证据。
+KV materialize 首次完整运行在动态共享内存设置处失败：原 Fused64 tile 需要 66,560 字节，
+超过本卡 65,536 字节上限。原生 overlay 已把该路由的 K tile 从 128 改为 64，需求降为
+33,280 字节，并增加编译期容量断言；全部 192 个 eager case 和 29 个 Graph 原断言保留，
+该修正已实际 O3 重编与全套复测通过，另保留全部 87 次 Graph 重放，最低可用 RAM
+6.271 GiB。合法的 49,664 字节路由继续使用真实 HIP 属性 API。该套件验证 BF16 K/V，
+不能据此宣称其他缓存 codec 的 materialize 数学已验证。
 
 Flash-Next 原生产 NVFP4 MoE gate/up 的三种调度已限制到真实 64 KiB LDS 预算；九次真实
 生产 phase 调用、124,800 个 BF16 输出通过独立 packed-weight FP64 oracle，含 expert/token
@@ -145,8 +162,8 @@ GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算
 包括 recurrent、WY/state-passing/output、two-stage、状态转换与 replay-record。
 4 个原有数值测试已通过，包括 WY/recurrent、two-stage、FP16 状态和 replay-record。
 保留了原始 FP64 oracle、长序列、状态连续性和误差判据；其中 two-stage 覆盖 T=16,385。
-`test_gdn_replay_fold` 还依赖尚未迁移的
-输入投影融合家族，保留在上游，需随该依赖一起验收，不能计作通过。
+`test_gdn_replay_fold` 所依赖的融合输入投影库现已编译，原完整 replay-fold
+测试也已接入目标图，仍待运行，不能计作通过。
 仅在 GDN 的 `FoldAccess` 上将 NVIDIA `__grid_constant__` 优化限定符改为 HIP const 值参数；
 其方法不跨线程发布参数地址。其他 TMA 描述符未作同样转换。
 
@@ -173,7 +190,7 @@ NVFP4 解码还发现本机编译器的融合半精度转换丢失负零符号�
 | GDN TF32 MMA | 原生 FP32 SIMD FMA + wave32 shuffle；片段及上述四个原 GDN 数学套件通过 |
 | FP16 / signed INT8 / OCP FP8 E4M3 MMA | gfx1201 原生 WMMA；上述片段测试通过，生产 Op 家族另行验收 |
 | ldmatrix x2/x4、转置 | 原生 LDS 装载及 wave32 shuffle，精确布局测试通过 |
-| CUB 排序 | hipCUB，采样原测试通过；完整推测解码长套件尚未通过 |
+| CUB 排序 | hipCUB，采样与完整原推测解码长套件均已通过 |
 | cp.async / pipeline copy | 先用逐线程完成的 HIP 全局→LDS 复制保持依赖；尚无异步重叠性能结论 |
 | PDL 网格依赖 | HIP stream 顺序执行，保留数据依赖与 Graph 捕获语义，暂不实现网格重叠 |
 | CUDA Graph | HIP Graph，Core、归一化和生产 BF16 GEMM 路径已验证 |
@@ -257,6 +274,9 @@ gfx1201 编译检查与运行时 wave32 设备检查。没有改动矩阵坐标�
 现有本地 GGUF 不全满足原配方：Swift 的部分 GDN A/B 控制权重为 Q8，GSQ 部分为 F32，
 而原 GDN gating projection 合约只接收 BF16。这两项仍是导入/算子限制，不能通过静默转 BF16
 来宣称保持原权重语义。
+这是可新增的格式支持，不是 AMD 硬件无解。后续可为小型控制矩阵增加 F32/Q8_0 权重
+读取和原生 FP32 FMA 路由，保持控制输出为 FP32、独立 FP64 oracle 及零隐藏 workspace；
+归一化控制分支不能借用先生成 BF16 激活或 BF16 logits 的替代路径。该方案尚未实施。
 
 Bonsai 的 65-block 文件现可严格验证全部 866 个张量：识别 15 个已知 MTP 张量，保留主干
 ternary 代码/尺度及 MTP 原 Q8_0 字节，未知张量仍拒绝。原转换入口也已补齐必需的 v3
@@ -267,6 +287,14 @@ model_id/weights_id 参数与报告；缺省权重身份每次唯一，显式标
 避免 Windows 整文件 mmap 累积驻留。修复后已实际生成 7,654,216,448 字节的 text+MTP
 制品，783 个写入 job、790 个对象，转换时最低可用 RAM 5.112 GiB。它不是完整 Engine
 推理或端到端优势的证据。
+
+实际制品的 456 个 direct 控制参数已全量核对：norm、conv、控制矩阵及 dt_bias 在恢复
+存储约定与重排后有效值完全一致。A_log 的 2,304 个标量有 3 个在逆 exp/FP32 重构后
+产生舍入差异，最大绝对差约 1.91e-6；实际 GPU 数学与整模型质量仍需验证。
+主 PQ2/T2 与 MTP Q8 的代表行编码/尺度抽检一致，不能据此宣称整个权重 payload 已逐值核对。
+公平参考优先采用双方实际支持的相同 BF16 KV；NInfer Int8Group64 与 llama.cpp Q8_0
+不是相同 codec，压缩模式需单列品质与性能取舍。冷启动测试还须关闭驻留提示词复用，
+并确认缓存 token 为零；仅设置 `cache-ram=0` 不足以保证这一点。
 
 后续必须完成内存借用、其他算子/矩阵格式、attention、AMD 调度和完整 Engine 的接入。
 AMD gfx1201 不能当作 NVIDIA sm_120 使用，NVIDIA 路由表与性能数字也不适用于本卡。

@@ -244,6 +244,27 @@ __device__ __forceinline__ float kv_cache_e8_root_reciprocal_rn(float value) {
 
 edit('src/ops/kv_cache/e8_root_codec.cuh', exact_e8_root_arithmetic)
 
+
+def materialize_fused_geometry(source):
+    # The original fused R128/C64/K128 union is 66,560 bytes: 32,768
+    # decoded-code + 16,384 activation + 16,384 code + 1,024 scale bytes.
+    # K64 halves its mainloop to 33,280 bytes, still larger than the aliased
+    # 32,768-byte score plane. Keep Rows128, Columns64 and all 512 threads:
+    # key normalization/RoPE remains fused and the original no-scratch route,
+    # masks, positions, cache stores and arena contract remain unchanged.
+    # Every original 32-wide FP16-scale group still performs the same two
+    # BF16 MMA steps and FP32 scale FMA in the same ascending K order.
+    source = replace_once(source,
+        'launch_mma<128, 64, 128, 2>(context, positions, counts, state_slots, device_layers,',
+        'launch_mma<128, 64, 64, 2>(context, positions, counts, state_slots, device_layers,')
+    return replace_once(source,
+        '    constexpr int bytes = sizeof(MaterializeStorage<Rows, Columns, BlockK>);',
+        '    constexpr int bytes = sizeof(MaterializeStorage<Rows, Columns, BlockK>);\n'
+        '    static_assert(bytes <= 65536, "gfx1201 materialize LDS exceeds 64 KiB");')
+
+
+edit('src/ops/context_kv_materialize/materialize.cu', materialize_fused_geometry)
+
 # A CUDA register-allocation ceiling is a schedule directive, not a semantic
 # value. Let AMD's compiler allocate native VGPRs; do not copy an NVIDIA count.
 for path in (generated / 'src/ops/softmax_attention').rglob('*'):

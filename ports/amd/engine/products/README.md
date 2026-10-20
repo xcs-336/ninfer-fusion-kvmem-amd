@@ -32,6 +32,18 @@ executing a supplied original program. From the build directory, for example:
 .\ninfer-amd-env.cmd .\ninfer_bench.exe --help
 ```
 
+The actual CLI, benchmark and perplexity tools expose the original Engine's
+`--device-profile auto|off|calibrate`. The default remains `auto`, which measures
+real routes when no actual hardware profile exists. `off` disables lookup and
+calibration for a bounded first run; `calibrate` requests real measurements.
+The mode is recorded in CLI logs, benchmark table/JSON/CSV and perplexity reports.
+The existing CLI/benchmark parser tests retain their assertions and add valid,
+invalid, missing-value and default cases. The additional CPU-only
+`ninfer_amd_device_profile_cli_contract` invokes the actual three programs'
+help/error paths before Engine or GPU initialization, including perplexity's
+otherwise private parser. The real serving tool already exposes its original
+profile mode and path options.
+
 Source generation, dependency resolution, script syntax, in-place source-view
 idempotence, the actual build-id script and the initial metadata/benchmark/CLI
 frontends pass. Full product compilation/linking, the original product tests,

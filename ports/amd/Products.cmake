@@ -219,3 +219,12 @@ foreach(_app ninfer ninfer-serve ninfer-calibrate ninfer-perplexity ninfer_bench
   set_tests_properties(ninfer_amd_${_app_test}_help PROPERTIES TIMEOUT 30
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${ROCM_ROOT}/bin")
 endforeach()
+
+# These actual application error/help paths return before any Engine, artifact,
+# profile lookup or GPU initialization. No mirrored perplexity parser is used.
+add_test(NAME ninfer_amd_device_profile_cli_contract
+  COMMAND "${NINFER_PYTHON}" -B "${_products_port}/products/test_profile_cli_contract.py"
+    --cli "$<TARGET_FILE:ninfer>" --bench "$<TARGET_FILE:ninfer_bench>"
+    --perplexity "$<TARGET_FILE:ninfer-perplexity>")
+set_tests_properties(ninfer_amd_device_profile_cli_contract PROPERTIES TIMEOUT 100
+  ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${ROCM_ROOT}/bin")

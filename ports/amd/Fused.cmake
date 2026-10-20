@@ -172,7 +172,24 @@ if(TARGET ninfer_linear_add_ops_amd AND TARGET ninfer_linear_swiglu_ops_amd)
   ninfer_native_hip(ninfer_amd_linear_gguf_test)
   target_include_directories(ninfer_amd_linear_gguf_test PRIVATE "${_generated}/tests")
   target_compile_options(ninfer_amd_linear_gguf_test PRIVATE -fno-fast-math -ffp-contract=off)
+  # The SDK's host float-to-__bf16 conversion uses compiler-rt on Windows.
+  execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-resource-dir
+    RESULT_VARIABLE _fused_gguf_resource_status
+    OUTPUT_VARIABLE _fused_gguf_resource_dir
+    ERROR_VARIABLE _fused_gguf_resource_error
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT _fused_gguf_resource_status STREQUAL "0" OR
+      _fused_gguf_resource_dir STREQUAL "")
+    message(FATAL_ERROR "Cannot locate compiler-rt for the combined GGUF test: ${_fused_gguf_resource_error}")
+  endif()
+  file(TO_CMAKE_PATH "${_fused_gguf_resource_dir}" _fused_gguf_resource_dir)
+  set(_fused_gguf_builtins
+    "${_fused_gguf_resource_dir}/lib/windows/clang_rt.builtins-x86_64.lib")
+  if(NOT IS_DIRECTORY "${_fused_gguf_resource_dir}" OR
+      NOT EXISTS "${_fused_gguf_builtins}" OR IS_DIRECTORY "${_fused_gguf_builtins}")
+    message(FATAL_ERROR "Missing native Windows compiler-rt builtins: ${_fused_gguf_builtins}")
+  endif()
   target_link_libraries(ninfer_amd_linear_gguf_test PRIVATE ninfer_linear_test_support_amd
-    ninfer_linear_add_ops_amd ninfer_linear_swiglu_ops_amd)
+    ninfer_linear_add_ops_amd ninfer_linear_swiglu_ops_amd "${_fused_gguf_builtins}")
   ninfer_add_gpu_test(ninfer_amd_linear_gguf_test ninfer_amd_linear_gguf_test 1800)
 endif()

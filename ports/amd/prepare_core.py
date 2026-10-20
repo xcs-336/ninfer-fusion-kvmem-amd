@@ -23,6 +23,10 @@ pairs.pop('__CUDA_ARCH__', None)
 pairs['__CUDACC__'] = '__HIPCC__'
 pairs['cudaHostAlloc'] = 'hipHostMalloc'
 pairs['cudaFuncSetAttribute'] = 'ninfer_hip_func_set_attribute'
+# CUDA overloads the flags form and the legacy diagnostic form. HIP exposes
+# separate APIs. Let C++ select their exact signatures; do not parse, count or
+# rewrite call arguments (flags may contain nested calls or comma expressions).
+pairs['cudaGraphInstantiate'] = 'ninfer_hip_graph_instantiate'
 pairs['__vsub4'] = 'ninfer_hip_vsub4'
 pairs['__float2bfloat16_rn'] = '__float2bfloat16'
 pairs['__floats2bfloat162_rn'] = 'ninfer_hip_floats2bfloat162_rn'
@@ -68,6 +72,10 @@ for source in sources:
         text = text.replace(f'<{original}>', f'<{replacement}>')
     text = re.sub(r'<cub/([^>]+)\.cuh>', r'<hipcub/\1.hpp>', text)
     text = word.sub(lambda m: pairs.get(m[0], m[0]), text)
+    if 'ninfer_hip_graph_instantiate' in text:
+        # Keep this compatibility header local to graph callers. Changing the
+        # globally forced intrinsics header would invalidate every native TU.
+        text = '#include "core/hip_graph_instantiate.h"\n' + text
     if relative.as_posix() == 'src/core/evictable_kv_pool.h':
         anchor = '    [[nodiscard]] static bool supported(const DeviceContext& device);'
         if text.count(anchor) != 1:
@@ -145,8 +153,6 @@ for source in sources:
            (static_cast<std::uint32_t>(__builtin_bit_cast(unsigned short, __float2bfloat16(hi))) << 16);
 }''', text, flags=re.S)
     if source.name == 'decode_graph.cpp':
-        text = text.replace('hipGraphInstantiate(&exec, definition.graph_, 0)',
-                            'hipGraphInstantiateWithFlags(&exec, definition.graph_, 0)')
         text = text.replace('cudaGraphExecUpdateResultInfo result{};',
                             'hipGraphExecUpdateResult result{};\n    hipGraphNode_t error_node{};')
         text = text.replace('hipGraphExecUpdate(exec_, definition.graph_, &result)',
@@ -197,7 +203,8 @@ private:
 '''
     write(relative, text)
 
-for filename in ('hip_vmm_address.h', 'hip_profiler.cpp', 'hip_intrinsics.h', 'pdl.cuh'):
+for filename in ('hip_vmm_address.h', 'hip_profiler.cpp', 'hip_intrinsics.h', 'pdl.cuh',
+                 'hip_graph_instantiate.h'):
     write(Path('src/core') / filename, (port / 'core' / filename).read_text(encoding='utf-8'))
 for filename in ('memory.cuh', 'ldmatrix.cuh', 'mma.cuh', 'mma_f16_gfx12.cuh', 'mma_s8_gfx12.cuh',
                  'mma_fp8_gfx12.cuh', 'mma_nvfp4_gfx12.cuh'):
