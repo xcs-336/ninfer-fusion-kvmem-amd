@@ -128,3 +128,5 @@ execute_process(COMMAND "${NINFER_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/sync_sourc
 if(NOT _sync_status EQUAL 0)
   message(FATAL_ERROR "HIP source view publication failed")
 endif()
+include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedStorage.cmake")
+
