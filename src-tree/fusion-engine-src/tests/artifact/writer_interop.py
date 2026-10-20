@@ -20,6 +20,7 @@ def main() -> int:
             with ArtifactWriter(
                 path,
                 [TensorSpec("matrix", (130, 130), "bf16", "contiguous_le_v1")],
+                identity={"model_id": "writer-interop", "weights_id": "matrix-byte-pattern"},
                 components={"text": {"config": {}}},
                 bindings={
                     "whole": {"object": "matrix"},

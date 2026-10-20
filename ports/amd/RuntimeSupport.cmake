@@ -3,6 +3,19 @@
 if(NOT TARGET ninfer_basic_ops_amd)
   message(FATAL_ERROR "NINFER_AMD_RUNTIME_SUPPORT requires NINFER_AMD_BASIC_OPS")
 endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_LIST_DIR}/runtime/prepare_runtime.py"
+  "${CMAKE_CURRENT_LIST_DIR}/runtime/amd_hardware_class.h")
+execute_process(COMMAND "${NINFER_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/runtime/prepare_runtime.py"
+  --source-view "${_prepared}" --output "${_prepared}"
+  RESULT_VARIABLE _runtime_preparation_status COMMAND_ECHO STDOUT)
+if(NOT _runtime_preparation_status EQUAL 0)
+  message(FATAL_ERROR "Native AMD runtime hardware identity preparation failed")
+endif()
+add_executable(ninfer_amd_hardware_class_test "${CMAKE_CURRENT_LIST_DIR}/runtime/test_hardware_class.cpp")
+target_compile_features(ninfer_amd_hardware_class_test PRIVATE cxx_std_20)
+add_test(NAME ninfer_amd_hardware_class_test COMMAND ninfer_amd_hardware_class_test)
+set_tests_properties(ninfer_amd_hardware_class_test PROPERTIES TIMEOUT 10)
 set(NINFER_DEVICE_PROFILES_FILE "${_engine}/src/runtime/engine/device_profiles.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${NINFER_DEVICE_PROFILES_FILE}")
 file(READ "${NINFER_DEVICE_PROFILES_FILE}" NINFER_DEVICE_PROFILES_JSON)

@@ -44,7 +44,8 @@ for symbol in ('__shfl_sync', '__shfl_xor_sync', '__shfl_down_sync', '__shfl_up_
                '__reduce_and_sync', '__reduce_or_sync', '__reduce_xor_sync'):
     pairs[symbol] = 'ninfer_hip_' + symbol.removeprefix('__')
 headers = {'cuda.h': 'hip/hip_runtime.h', 'cuda_runtime.h': 'hip/hip_runtime.h',
-           'cuda_runtime_api.h': 'hip/hip_runtime_api.h', 'cuda_bf16.h': 'hip/hip_bf16.h',
+           'cuda_runtime_api.h': 'hip/hip_runtime_api.h',
+           'cuda_profiler_api.h': 'hip/hip_runtime_api.h', 'cuda_bf16.h': 'hip/hip_bf16.h',
            'cuda_fp16.h': 'hip/hip_fp16.h', 'cuda_fp8.h': 'hip/hip_fp8.h',
            'cuda_fp4.h': 'hip/hip_fp4.h',
            'math_constants.h': 'hip/hip_math_constants.h', 'cublas_v2.h': 'hipblas/hipblas.h'}
@@ -56,7 +57,8 @@ def write(relative, text):
     if not destination.is_file() or destination.read_text(encoding='utf-8') != text:
         destination.write_text(text, encoding='utf-8', newline='\n')
 
-sources = [path for folder in ('src', 'include', 'tests') for path in (engine / folder).rglob('*')]
+sources = [path for folder in ('src', 'include', 'tests', 'apps', 'bench')
+           for path in (engine / folder).rglob('*')]
 for source in sources:
     if not source.is_file() or source.suffix not in ('.h', '.hpp', '.cuh', '.cpp', '.cu'):
         continue
@@ -66,6 +68,28 @@ for source in sources:
         text = text.replace(f'<{original}>', f'<{replacement}>')
     text = re.sub(r'<cub/([^>]+)\.cuh>', r'<hipcub/\1.hpp>', text)
     text = word.sub(lambda m: pairs.get(m[0], m[0]), text)
+    if relative.as_posix() == 'src/core/evictable_kv_pool.h':
+        anchor = '    [[nodiscard]] static bool supported(const DeviceContext& device);'
+        if text.count(anchor) != 1:
+            raise ValueError('expected one raw KV driver capability declaration')
+        text = text.replace(anchor,
+            '    // Raw driver VMM availability is insufficient for safe concurrent KV loans.\n'
+            '    // This Windows/gfx1201 backend failed resident-byte isolation after\n'
+            '    // noncontiguous remapping. Keep raw diagnostics available, but do not\n'
+            '    // admit this lending contract into the public Engine.\n'
+            '    [[nodiscard]] static constexpr bool noncontiguous_lending_qualified() noexcept {\n'
+            '        return false;\n'
+            '    }\n\n' + anchor)
+    if relative.as_posix() == 'src/models/qwen3_5/program/program_impl.cpp':
+        anchor = ('    if (pool == nullptr || !pool->mirror_captured()) {\n'
+                  '        throw std::logic_error("overlay Vision weight pool has no captured window");\n'
+                  '    }')
+        if text.count(anchor) != 1:
+            raise ValueError('expected one Vision KV arena admission point')
+        text = text.replace(anchor, anchor + '\n'
+            '    // A nullptr arena uses the existing exclusive weight-suffix tier;\n'
+            '    // raw HIP VMM support does not qualify arbitrary KV-page aliasing.\n'
+            '    if (!EvictableKVPool::noncontiguous_lending_qualified()) { return nullptr; }')
     if relative.as_posix() == 'src/ops/linear/common/route_table.cpp':
         # Shared by Attention/materialize and Linear. HIP's major/minor are not
         # NVIDIA compute capabilities, and no RX 9070 performance bands exist.

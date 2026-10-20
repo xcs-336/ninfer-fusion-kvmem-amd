@@ -6,7 +6,7 @@
 当前是适配开发分支，完整 `.ninfer` Engine 尚未在 AMD 上编译或推理。
 Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 内核并验证；
 其他矩阵片段、四套 GDN 和原生权重恢复/Graph 也已通过下述独立测试；
-完整 Linear Op、attention 和模型执行仍在接入。
+public Linear 的十套量化数学测试已通过；BF16 完整套件、causal attention 和模型执行仍在接入。
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
 ## 已验证的硬件结果
@@ -39,15 +39,26 @@ HIPIFY 原许可保留在生成目录。生成阶段不自动翻译 PTX；生产
 它需要同时启用 `NINFER_AMD_CORE`。这不是完整的 Engine 构建目标。
 
 `NINFER_AMD_ATTENTION=ON` 接入全部原生产注意力/存储格式。context、sliding、packed、
-KV append/materialize/stream 的独立测试已实际编译链接，算术 GPU 验证正在进行；
+KV append/materialize/stream 的独立测试已实际编译链接。packed、sliding、context、
+KV stream、完整 KV append 及 selected-block 的下述数学测试通过；materialize 尚待运行。
 完整 causal 库仍待 O3 构建，不能把独立子库的链接当作全部注意力验收。
-`NINFER_AMD_LINEAR=ON` 接入原 public Linear 分派与格式家族，实际 O3 构建和数学资格进行中。
+`NINFER_AMD_LINEAR=ON` 接入原 public Linear 分派与格式家族。140 个生产编译单元、共用依赖、
+十一套原数学可执行文件及有界探针已实际 O3 编译链接。
 两者都需要 Core 和 Basic Ops；不能借 HIP 的 major/minor 号选择 NVIDIA 调度表。
 
 `NINFER_AMD_ARTIFACT=ON` 构建真实 v3 reader/binder/materializer；该库及三个原测试已编译链接，
-读取/绑定 CPU 测试通过，GPU materialize/permute 和 Python writer 互通尚待运行。
+读取/绑定 CPU、GPU materialize/permute 和 Python writer 单文件/分片互通测试均已通过。
 `NINFER_AMD_RUNTIME_SUPPORT=ON` 接入原 Engine 资源、上下文成本和 profile 支持库；
 它们是完整 Engine 的依赖，不是可运行模型的替代入口。
+
+`NINFER_AMD_FUSED=ON` 接入原融合投影家族；`NINFER_AMD_AUXILIARY_OPS=ON` 接入
+候选选择、分组卷积、KVMem 和稀疏 MoE。`NINFER_AMD_ENGINE=ON` 的目标图读取完整原有
+public Engine、文本、媒体、模型 loading/runtime 和原测试清单，依赖上述真实生产库。
+这些新增目标尚未完成整体构建与运行，不是已验收的模型入口。
+
+原 artifact reader、admission、context cost、resource manager 和 prefix-cache index 的
+五套 CPU 测试均已在实际 CMake/O3 构建中通过。修正了原 resource-manager 测试夹具缺失的
+压力规划能力声明，保留其全部行为断言；这不代表完整 Engine 推理已通过。
 
 ## 生产算子本机资格验证
 
@@ -55,6 +66,30 @@ KV append/materialize/stream 的独立测试已实际编译链接，算术 GPU �
 60 秒时间限制。30 个基础算子测试中 29 个通过，覆盖归一化、embedding、卷积、采样、
 MTP round、位置、scatter、激活和输出 logprob。所有原有数学 oracle 和误差判据保留。
 推测解码有大量 CPU oracle 工作，需进一步定位或按原有专项模式拆分验证；超时没有算作通过。
+
+后续严格 oracle 复测中，原先因等锁未运行的五个基础套件均已通过。完整推测解码套件以
+180 秒子进程上限重跑通过，保留全部 `K=1..31`、混合/重复历史、batch 和非有限值检查；
+此前 60 秒时限不足。累计 30 个基础套件的原判据均已有通过结果。
+
+十套完整原量化 Linear 数学套件通过：Q4/Q5/Q6/Q8 A16、T2 A16/A8、FP8 A16/A8、
+NVFP4 A16/A4。保留全形状、原 FP64 oracle、输入保持、保护区、Graph 及策略分支。
+七类 public Linear 有界探针也全部通过。Q6 探针初次误用了不合法的 token 数，已按原
+四 token 对齐合约修正夹具，未改变生产准入或原数学测试。
+
+完整原套件的 FP64 oracle 只物化 32 个采样行，输出也分块扫描，不持有整张 FP32 权重。
+逐套按实际压缩权重/副本预算准入，额外留 1 GiB 运行时与 2 GiB 系统余量；本轮十套均实际
+运行并通过，观测最低可用 RAM 2.902 GiB。BF16 原词表夹具的完整保护副本仍偏大，现已把
+生成测试 helper 的 readback 改为至多 2 MiB 的全字节分块比较；全域和判据保留，完整 GPU
+复测尚待运行，不能把前端检查当作通过。
+
+融合 RMSNormRoPE 的原完整测试也已通过，包括与分拆路径的逐位比较和原数学 oracle。
+初测 19 处差异全部在 RoPE 后半通道；真实编译 IR 显示两条路径选择了不同的 FMA 收缩顺序。
+融合路径现在显式保持该舍入边界，原 exact 断言未改。
+
+制品的原 GPU 重排、materialization 和 Python writer 单文件/分片互通均通过。
+writer 互通夹具补齐了当前 v3 格式要求的 identity 字段；全部父对象字节与逻辑视图断言保留。
+原 device-profile 测试也已通过。Windows 没有 GNU `--wrap`，原 Windows 路径不执行
+materializer 的链接注入故障测试，不能据此宣称该注入分支已验证。
 
 生产 `bf16_gemm_mma_kernel` 已通过独立 FP64 参考检查：
 
@@ -73,6 +108,25 @@ GGUF 的既有 GGML GPU 桥已使用其原生 HIP/RDNA4 WMMA 路径编译，未�
 恢复的 `vendors/hip.h` 来自同一固定上游提交 `a25c9865fe03c954c93fd755b5d79ae86ba99750`，
 SHA256 为 `db9b1142727f3eaf037d888da133029cd21d9fbe15cfc707be7b9633ae080323`。
 这消除了 embedding 的真实依赖缺口；GGUF 各量化格式的矩阵数值验证尚未完成。
+
+### Attention 与精确缓存编码
+
+原 packed、sliding-window、context 和 KV-stream 独立套件通过，原 FP64 判据保留。
+新增 selected-block public Op 测试覆盖 BF16/OCP FP8、非顺序稀疏选择、空集合、尾部、
+Graph、保护区及输入保持，共 16 个样例，通过独立 FP64 oracle。
+
+完整原 KV append 套件现已通过，包括 RK4V4/RK2V4 E8 的逐代码比较。初测 RK2V4 有
+四个精确代码失败；原因是本机 HIP 的普通 `_rn` 包装允许乘减融合及近似平方根。
+适配只在 E8 codec 上保留显式舍入边界：可链接的 OCML rounded 加减乘、禁止局部收缩的
+除法，以及编译器正确舍入的除法/平方根模式。实际 O3 链接和全部原断言复测通过。
+没有使用 SDK 头文件中声明但本机设备库缺失的 rounded sqrt/div 符号。
+
+完整 causal attention 和 KV materialize 的数学资格仍待完成，以上不是端到端性能证据。
+
+Flash-Next 原生产 NVFP4 MoE gate/up 的三种调度已限制到真实 64 KiB LDS 预算；九次真实
+生产 phase 调用、124,800 个 BF16 输出通过独立 packed-weight FP64 oracle，含 expert/token
+排列、尾部、保护区与输入保持。真实 HIP batch DMA 也通过 pageable/pinned 来源、两次更新和
+逐字节保护检查。它们不代表完整 MoE、host-tiered staging 或整个模型已验收。
 
 ### GDN 的原生 FP32 路径
 
@@ -174,6 +228,9 @@ Graph 读取、不同/相同大小的地址语义、事务 move 与重复 close�
 具体契约与资源公式见 [memory/design.md](memory/design.md)。
 
 KV 的任意非连续空闲页拼成连续 workspace 仍需要可靠映射，不能用权重尾部方法冒充等价实现。
+生成的原生产 `make_kv_arena` 现在检查显式的非连续借用资格，当前为 false，因此沿用原有
+普通 DeviceArena 与已验证权重尾部的回退路径。底层 VMM 诊断和原隔离失败断言仍保留；
+完整 Vision/Engine 生命周期还需集成验证。
 建议先采用可证明完全空闲的物理连续 KV 段，无法满足时借用已验证的权重尾部；另一个方案是
 启动时预留并明确计入容量预算的 workspace。目前未实现这两项 KV 策略，也不宣称原非连续借用可用。
 
@@ -194,6 +251,22 @@ gfx1201 编译检查与运行时 wave32 设备检查。没有改动矩阵坐标�
 若量化、历史保留范围或输出质量不同，只能报告相应配置的取舍，不能直接声称后端更快。
 确认主要工作负载的收益明显超过波动、质量/稳定性和资源约束满足要求后，再与部署会话接入
 其现有调用和配置，并复测实际工作流。当前尚无端到端优势或已完成正式迁移的声明。
+
+本机独立 CPU 转换环境已能运行原转换器；相关 GGUF/MTP/制品与 CLI 的 53 项测试通过。
+原格式测试表补齐同一生产 GGML 已定义的 Q2_0（type 42、64 个元素/18 字节），未删除旧项。
+现有本地 GGUF 不全满足原配方：Swift 的部分 GDN A/B 控制权重为 Q8，GSQ 部分为 F32，
+而原 GDN gating projection 合约只接收 BF16。这两项仍是导入/算子限制，不能通过静默转 BF16
+来宣称保持原权重语义。
+
+Bonsai 的 65-block 文件现可严格验证全部 866 个张量：识别 15 个已知 MTP 张量，保留主干
+ternary 代码/尺度及 MTP 原 Q8_0 字节，未知张量仍拒绝。原转换入口也已补齐必需的 v3
+model_id/weights_id 参数与报告；缺省权重身份每次唯一，显式标签保持原样。现有候选前端与
+原 GGUF 的 248,077 个 token ID、247,587 条 BPE merges 全部匹配。
+
+第一次真实制品转换触及 2 GiB RAM 保护而终止，没有计作成功。GGUF 源现按请求范围读取，
+避免 Windows 整文件 mmap 累积驻留。修复后已实际生成 7,654,216,448 字节的 text+MTP
+制品，783 个写入 job、790 个对象，转换时最低可用 RAM 5.112 GiB。它不是完整 Engine
+推理或端到端优势的证据。
 
 后续必须完成内存借用、其他算子/矩阵格式、attention、AMD 调度和完整 Engine 的接入。
 AMD gfx1201 不能当作 NVIDIA sm_120 使用，NVIDIA 路由表与性能数字也不适用于本卡。

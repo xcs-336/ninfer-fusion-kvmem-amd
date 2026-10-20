@@ -7,10 +7,11 @@ import json
 from pathlib import Path
 import time
 from typing import Callable
+from uuid import uuid4
 
 import torch
 
-from tools.artifact.schema import ResourceSpec
+from tools.artifact.schema import ResourceSpec, identifier
 from tools.artifact.tensor_output import TensorOutput
 from tools.artifact.writer import ArtifactWriter, DEFAULT_MAX_FILE_BYTES
 
@@ -30,18 +31,36 @@ def convert(
     output: str | Path,
     *,
     name: str | None = None,
+    model_id: str | None = None,
+    weights_id: str | None = None,
     provenance: dict | None = None,
     device: str = "cuda",
     rows_per_chunk: int = 512,
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     progress: Callable[[int, int, WeightJob], None] | None = None,
 ) -> dict:
+    """Write a complete artifact, with explicit or conservatively unique identity.
+
+    A caller may carry canonical IDs across equivalent artifacts. Without a supplied
+    weights_id, each conversion gets a fresh label: a filename or display name alone
+    cannot establish that two conversions contain interchangeable weights.
+    """
     path = Path(output)
     report_path = Path(str(path) + ".conversion.json")
     if path.exists() or report_path.exists():
         raise FileExistsError(
             f"conversion output already exists: {path} or {report_path}"
         )
+    identity = {
+        "model_id": identifier(
+            model_id if model_id is not None else name if name is not None else path.stem,
+            "artifact identity model_id",
+        ),
+        "weights_id": identifier(
+            weights_id if weights_id is not None else f"conversion-{uuid4().hex}",
+            "artifact identity weights_id",
+        ),
+    }
     chosen_device = torch.device(device)
     if chosen_device.type == "cuda" and not torch.cuda.is_available():
         raise ValueError("CUDA conversion requested but CUDA is unavailable")
@@ -61,6 +80,7 @@ def convert(
     report = {
         "components": model.components,
         "name": name,
+        "identity": identity,
         "output": str(path),
         "device": str(chosen_device),
         "torch_version": torch.__version__,
@@ -94,6 +114,7 @@ def convert(
         bindings=prepared.bindings,
         uses=prepared.uses,
         metadata=metadata,
+        identity=identity,
         provenance=provenance,
         max_file_bytes=max_file_bytes,
     ) as writer:

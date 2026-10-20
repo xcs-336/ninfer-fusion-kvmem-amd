@@ -22,8 +22,17 @@ foreach(_index RANGE 0 ${_linear_last_source})
   string(JSON _source GET "${_linear_manifest}" native_sources ${_index})
   list(APPEND _linear_paths "${_generated}/${_source}")
 endforeach()
-add_library(ninfer_linear_ops_amd STATIC ${_linear_paths})
+add_library(ninfer_linear_ops_amd STATIC ${_linear_paths}
+  "${CMAKE_CURRENT_LIST_DIR}/linear/resource_probe.cu")
 ninfer_native_hip(ninfer_linear_ops_amd)
+# NVFP4 activation encoding has explicit __fdiv_rn boundaries. The installed HIP wrapper is
+# ordinary division; make its correct-rounding mode explicit only in the actual codec consumers.
+foreach(_source IN LISTS _linear_paths)
+  if(_source MATCHES "/nvfp4/.*\\.cu$")
+    set_property(SOURCE "${_source}" APPEND PROPERTY COMPILE_OPTIONS
+      -fhip-fp32-correctly-rounded-divide-sqrt)
+  endif()
+endforeach()
 target_link_libraries(ninfer_linear_ops_amd PUBLIC ninfer_basic_ops_amd)
 
 add_library(ninfer_linear_test_support_amd STATIC
@@ -41,6 +50,18 @@ foreach(_test q4_a16 q5_a16 q6_a16 q8_a16 t2_a16 t2_a8 nvfp4_a16 nvfp4_a4 fp8_a1
   target_link_libraries(${_target} PRIVATE ninfer_linear_test_support_amd)
   target_compile_options(${_target} PRIVATE -fno-fast-math -ffp-contract=off)
   ninfer_add_gpu_test(${_target} ${_target} 1800)
+endforeach()
+
+# Bound the host fixture while exercising the same public dispatch and upstream FP64 oracle.
+# These first-execution probes complement every unchanged original family suite above.
+add_executable(ninfer_amd_linear_public_probe "${CMAKE_CURRENT_LIST_DIR}/linear/public_probe.cpp")
+ninfer_native_hip(ninfer_amd_linear_public_probe)
+target_include_directories(ninfer_amd_linear_public_probe PRIVATE "${_generated}/tests")
+target_link_libraries(ninfer_amd_linear_public_probe PRIVATE ninfer_linear_test_support_amd)
+target_compile_options(ninfer_amd_linear_public_probe PRIVATE -fno-fast-math -ffp-contract=off)
+foreach(_family q4 q5 q6 q8 t2 fp8 nvfp4)
+  ninfer_add_gpu_test(ninfer_amd_linear_${_family}_public_probe
+    ninfer_amd_linear_public_probe 180 ${_family})
 endforeach()
 # test_gguf.cpp also exercises the complete public LinearAdd/LinearSwiGLU wrappers. Their full
 # production families are required before this unchanged test can link; no GGUF-only wrapper or

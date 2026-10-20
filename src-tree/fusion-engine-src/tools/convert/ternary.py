@@ -7,9 +7,12 @@ and `ssm_a = -exp(A_log)`. This module restores the grouped value-head order and
 norm and A_log values, and exposes the rotated projections as encoded T2 rows whose Uses carry
 the sign vector of their input width, so the recipe stores them without rounding. The token table
 is stored the same way, inverse-rotated; the runtime restores each gathered row with the
-hidden-width signs. MTP, Vision, the frontend resources and the DFlash2 adapter come from the
-companions given to `--model` and `--source dflash2`, which share the geometry; `--source mtp`
-replaces the checkpoint's MTP head.
+hidden-width signs. An optional, complete blk.64 MTP head is recognised only in its registered
+Q8_0/F32 geometry. Selecting the MTP component imports those matrix rows as the original GGUF
+blocks, without the text tower's Hadamard signs or another quantisation. A text-only selection
+still validates the complete source manifest. Vision, frontend resources and the DFlash2 adapter
+come from the companions given to `--model` and `--source dflash2`; an explicit `--source mtp`
+takes precedence over the embedded head. A GGUF without MTP retains the checkpoint MTP source.
 """
 
 from __future__ import annotations
@@ -82,7 +85,7 @@ def full_attention(layer: int) -> bool:
     return layer % 4 == 3
 
 
-def expected_tensors() -> dict[str, tuple[tuple[int, ...], str]]:
+def expected_tensors(mtp: bool = False) -> dict[str, tuple[tuple[int, ...], str]]:
     """Row-major shape and GGUF type of every source tensor."""
 
     out = {
@@ -114,13 +117,47 @@ def expected_tensors() -> dict[str, tuple[tuple[int, ...], str]]:
             out[p + "ssm_dt.bias"] = ((GDN_VALUE_HEADS,), "F32")
             out[p + "ssm_conv1d.weight"] = ((GDN_CHANNELS, GDN_TAPS), "F32")
             out[p + "ssm_norm.weight"] = ((GDN_HEAD_DIM,), "F32")
+    if mtp:
+        # This release adds a full-attention prediction block after the 64 text blocks.
+        # Its unrotated Q8_0 matrices must not enter the PQ2_0 Hadamard tensor set.
+        p = f"blk.{LAYERS}."
+        out |= {
+            p + "attn_norm.weight": ((HIDDEN,), "F32"),
+            p + "post_attention_norm.weight": ((HIDDEN,), "F32"),
+            p + "ffn_gate.weight": ((INTERMEDIATE, HIDDEN), "Q8_0"),
+            p + "ffn_up.weight": ((INTERMEDIATE, HIDDEN), "Q8_0"),
+            p + "ffn_down.weight": ((HIDDEN, INTERMEDIATE), "Q8_0"),
+            p + "attn_q.weight": ((2 * ATTENTION_QUERY_ROWS, HIDDEN), "Q8_0"),
+            p + "attn_k.weight": ((ATTENTION_KV_ROWS, HIDDEN), "Q8_0"),
+            p + "attn_v.weight": ((ATTENTION_KV_ROWS, HIDDEN), "Q8_0"),
+            p + "attn_output.weight": ((HIDDEN, ATTENTION_QUERY_ROWS), "Q8_0"),
+            p + "attn_q_norm.weight": ((ATTENTION_HEAD_DIM,), "F32"),
+            p + "attn_k_norm.weight": ((ATTENTION_HEAD_DIM,), "F32"),
+            p + "nextn.eh_proj.weight": ((HIDDEN, 2 * HIDDEN), "Q8_0"),
+            p + "nextn.enorm.weight": ((HIDDEN,), "F32"),
+            p + "nextn.hnorm.weight": ((HIDDEN,), "F32"),
+            p + "nextn.shared_head_norm.weight": ((HIDDEN,), "F32"),
+        }
     return out
+
+
+def has_mtp(gguf: GGUFFile) -> bool:
+    """Whether the source declares the registered embedded prediction head.
+
+    This marker does not relax validation: block count, every MTP tensor and every
+    other source tensor are checked by :func:`validate`, even for text-only imports.
+    """
+
+    return f"blk.{LAYERS}.nextn.eh_proj.weight" in gguf.tensors
 
 
 def validate(gguf: GGUFFile) -> None:
     """Refuse any GGUF that is not the registered ternary Bonsai 2 27B layout."""
 
+    mtp = has_mtp(gguf)
     for key, expected in EXPECTED_HEADER.items():
+        if key == "qwen35.block_count":
+            expected = LAYERS + int(mtp)
         if gguf.kv.get(key) != expected:
             raise ValueError(
                 f"{gguf.path}: {key} = {gguf.kv.get(key)!r}, expected {expected!r}"
@@ -135,7 +172,7 @@ def validate(gguf: GGUFFile) -> None:
         raise ValueError(
             f"{gguf.path}: sign values must be {sum(SIGN_WIDTHS)} entries of +-1"
         )
-    expected = expected_tensors()
+    expected = expected_tensors(mtp)
     rotated = {name for name, (_, kind) in expected.items() if kind == "PQ2_0"} - {
         "token_embd.weight"
     }
@@ -383,6 +420,59 @@ def text_sources(
     return encoded, direct
 
 
+def mtp_sources(
+    gguf: GGUFFile,
+) -> tuple[dict[str, LogicalSource], dict[str, LogicalSource]]:
+    """The selected embedded MTP head, preserving each Q8_0 block's scale and codes.
+
+    The GGUF block importer already owns the exporter's full-attention row mapping
+    and norm convention. Import locally because that module uses the text geometry
+    and row maps defined here. The caller validates the full GGUF before selection.
+    """
+
+    from .gguf_blocks import _attention, _layer, block_source
+
+    g, p = f"blk.{LAYERS}.", "mtp/layers/0/"
+    encoded, direct = _layer(gguf, g, p)
+    attention, norms = _attention(gguf, g, p + "attention/")
+    encoded |= attention
+    direct |= norms
+    encoded["mtp/input_projection"] = block_source(
+        gguf, g + "nextn.eh_proj.weight", (HIDDEN, 2 * HIDDEN), rows()
+    )
+    for role, tensor in (
+        ("embedding_norm", "nextn.enorm.weight"),
+        ("hidden_norm", "nextn.hnorm.weight"),
+        ("final_norm", "nextn.shared_head_norm.weight"),
+    ):
+        direct["mtp/" + role] = _norm(gguf, g + tensor, True)
+    return encoded, direct
+
+
+def _import_mtp(model, recipe, gguf: GGUFFile) -> None:
+    encoded, direct = mtp_sources(gguf)
+    for name, source in encoded.items():
+        recipe.assign(
+            name,
+            format=source.read_encoded(0, 1).format,
+            method=import_encoded,
+            source=source,
+            activation_policy="AllowA8",
+        )
+    for name, source in direct.items():
+        recipe.assign(
+            name,
+            format=model.parameters[name].direct_format,
+            method=cast_direct,
+            source=source,
+        )
+    # All eight source matrices are Q8_0 under this recipe's validated contract.
+    a = "mtp/layers/0/attention/"
+    recipe.group([a + role for role in ("query", "key", "gate", "value")])
+    p = "mtp/layers/0/mlp/"
+    recipe.group([p + "gate", p + "up"])
+
+
 def bonsai2_27b_ternary(model, recipe, sources):
     """Ternary Bonsai 2 27B from `--source ternary=Ternary-Bonsai-2-27B-PQ2_0.gguf`."""
 
@@ -435,6 +525,10 @@ def bonsai2_27b_ternary(model, recipe, sources):
                 input_name,
                 auxiliaries={"hadamard_signs": auxiliaries[parameter.shape[1]]},
             )
+    # SourceInputs is a lazy Mapping whose __getitem__ reports missing sources with
+    # ValueError. Iterate its keys instead of triggering a missing-source lookup.
+    if "mtp" in model.components and has_mtp(gguf) and "mtp" not in set(sources):
+        _import_mtp(model, recipe, gguf)
 
 
 RECIPES = {"bonsai2_27b_ternary": bonsai2_27b_ternary}
@@ -445,6 +539,8 @@ __all__ = [
     "attention_rows",
     "bonsai2_27b_ternary",
     "expected_tensors",
+    "has_mtp",
+    "mtp_sources",
     "sign_vectors",
     "ternary_source",
     "text_sources",

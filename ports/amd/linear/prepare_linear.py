@@ -9,12 +9,13 @@ remains distinct from qualification of the underlying native matrix primitive.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 import json
 from pathlib import Path
 import re
 
 
-def definition(text: str, pattern: str, replacement: str) -> str:
+def definition(text: str, pattern: str, replacement: str | Callable[[str], str]) -> str:
     """Replace exactly one known definition, matching braces rather than a multiline wildcard."""
     matches = list(re.finditer(pattern, text, re.MULTILINE))
     if len(matches) != 1:
@@ -28,6 +29,8 @@ def definition(text: str, pattern: str, replacement: str) -> str:
         position += 1
     if depth:
         raise ValueError(f"unclosed definition for {pattern!r}")
+    if callable(replacement):
+        replacement = replacement(text[match.start():position])
     return text[:match.start()] + replacement + text[position:]
 
 
@@ -63,6 +66,30 @@ def native_global_loads(text: str) -> str:
                            f"{pointer[1]}); {assignments} }}")
         text = text[:start] + replacement + text[end:]
         begin = start + len(replacement)
+
+
+def native_k_partition(text: str, name: str, bytes_per_warp: str, fixed_bytes: str = "0") -> str:
+    """Retile only excessive K partitions, preserving every dependent original layout member."""
+    def rewrite(schedule: str) -> str:
+        anchor = re.search(r"static constexpr int kKWarps\s*=\s*KWarps;", schedule)
+        if anchor is None:
+            raise ValueError(f"missing requested K partition in {name}")
+        # Every original constexpr layout member must follow the admitted K partition. The
+        # with_problem alias keeps its original request and recomputes the same admission.
+        def dependent(match: re.Match[str]) -> str:
+            value = match[0]
+            return value if re.search(r"\bkKWarps\s*=", value) else re.sub(r"\bKWarps\b", "kKWarps", value)
+        schedule = re.sub(r"static constexpr [^;]+;", dependent, schedule)
+        native = f"""static constexpr int kNativeBytesPerKWarps = {bytes_per_warp};
+    static constexpr int kNativeFixedBytes = {fixed_bytes};
+    static constexpr int kNativeMaxKWarps = (65536 - kNativeFixedBytes) / kNativeBytesPerKWarps;
+    static constexpr int kKWarps = KWarps <= kNativeMaxKWarps ? KWarps :
+        (KWarps >= 8 && kNativeMaxKWarps >= 8 ? 8 :
+         (KWarps >= 4 && kNativeMaxKWarps >= 4 ? 4 : 2));
+    static_assert(kKWarps <= kNativeMaxKWarps, "native K partition exceeds workgroup LDS");"""
+        return re.sub(r"static constexpr int kKWarps\s*=\s*KWarps;", lambda _: native,
+                      schedule, count=1)
+    return definition(text, rf"struct {name}\s*\{{", rewrite)
 
 
 def nvfp4_native_paths(text: str, relative: str) -> str:
@@ -106,7 +133,111 @@ def nvfp4_native_paths(text: str, relative: str) -> str:
 
 
 def transform(relative: str, text: str) -> str:
+    if relative == "tests/ops/direct_bf16_weight.h":
+        # Keep the complete byte-preservation criterion with bounded host scratch.
+        # This helper runs only after the original caller synchronization, outside
+        # graph capture; no weight, shape, oracle row, or output check is changed.
+        text = body(text, r"int\s+verify_preserved\(std::string_view label\)\s+const\s*\{", """        constexpr std::size_t kChunkWords = 1024 * 1024;
+        std::vector<std::uint16_t> after(std::min(kChunkWords, host.bits.size()));
+        for (std::size_t begin = 0; begin < host.bits.size();) {
+            const std::size_t count = std::min(after.size(), host.bits.size() - begin);
+            const auto* source = static_cast<const std::uint16_t*>(device.p) + begin;
+            cuda_check(hipMemcpy(after.data(), source, count * sizeof(std::uint16_t),
+                                 hipMemcpyDeviceToHost), "native BF16 weight preservation readback");
+            if (!std::equal(after.begin(), after.begin() + count, host.bits.begin() + begin)) {
+                std::cerr << label << ": direct BF16 weight was modified\\n";
+                return 1;
+            }
+            begin += count;
+        }
+        return 0;""")
     text = native_global_loads(text)
+    # All admitted production schedules must obey the actual gfx1201 LDS limit. The original
+    # NVIDIA opt-in ceiling is larger; frontend acceptance alone cannot validate launchability.
+    text = text.replace("kSharedBytes <= 99 * 1024", "kSharedBytes <= 64 * 1024")
+    if relative.endswith("bf16/bf16_schedule.cuh"):
+        text = native_k_partition(text, "Bf16A16SlicedKMmaSchedule",
+            "(Stages * (BlockRows + BlockTokens) * WarpK * 2 > "
+            "BlockRows * BlockTokens * sizeof(float) ? "
+            "Stages * (BlockRows + BlockTokens) * WarpK * 2 : "
+            "BlockRows * BlockTokens * sizeof(float))")
+        text = definition(text, r"struct Bf16A16TmaMmaSchedule\s*:[^{]+\{",
+            "// Original TMA selection now carries the physical native LDS/WMMA schedule.\n"
+            "struct Bf16A16TmaMmaSchedule : Bf16A16MmaSchedule<32, 32, 64, 16, 16, 2, 1,\n"
+            "    Cache::cg, Cache::cg, Bf16MmaFragmentPipeline::PingPong,\n"
+            "    Bf16MmaRaster::TokenFast, Bf16MmaSwizzle::Xor64> {}")
+    if relative.endswith("fp8/fp8_schedule.cuh"):
+        text = native_k_partition(text, "Fp8A16SlicedKMmaSchedule",
+                                  "Stages * (1024 + 128 * TileTokens)")
+    if relative.endswith("nvfp4/nvfp4_schedule.cuh"):
+        text = native_k_partition(text, "Nvfp4A16SlicedKMmaSchedule",
+                                  "Stages * (576 + 128 * TileTokens)")
+    if relative.endswith("q8/q8_schedule.cuh"):
+        text = native_k_partition(text, "Q8A16SlicedKMmaSchedule",
+            "Stages * (1024 + 128 * BlockTokens + "
+            "(ScaleAccess == Q8ScaleAccess::Shared ? 64 : 0))",
+            "Stages * (ScaleAccess == Q8ScaleAccess::Shared ? 0 : 16)")
+    if relative.endswith(("fp8/fp8_schedule.cuh", "fp8/fp8_a8_mma.cuh")):
+        name = "Fp8A8MmaSchedule" if relative.endswith("fp8_schedule.cuh") else "Fp8MmaSchedule"
+        def native_fp8_tile(schedule: str) -> str:
+            result, count = re.subn(r"(static constexpr int kBlockK\s*=\s*)BlockK;",
+                r"\1(Stages * (BlockTokens + BlockRows) * BlockK <= 65536 ? BlockK : BlockK / 2);",
+                schedule, count=1)
+            if count != 1:
+                raise ValueError(f"missing original FP8 K tile in {name}")
+            return result
+        text = definition(text, rf"struct {name}\s*\{{", native_fp8_tile)
+    if relative.endswith("q8/q8_ksplit_grouped_mma.cuh"):
+        anchor = "    static_assert(Hidden % kGroupK == 0 && kKernelWarps <= 32);"
+        if text.count(anchor) != 1:
+            raise ValueError("missing original grouped Q8 resource anchor")
+        text = text.replace(anchor, anchor +
+            "\n    static_assert(KSplits * (1024 + 128 * TileCols) <= 65536,\n"
+            "                  \"native grouped Q8 staging exceeds workgroup LDS\");")
+    if "/q8/shapes/" in relative:
+        # The grouped kernel's activation slab is reused by its FP32 partials. Its exact
+        # single-stage LDS is KWarps*(1024 + 128*Capacity), independent of token-group count.
+        def grouped(match: re.Match[str]) -> str:
+            capacity, requested, groups = map(int, match.groups())
+            admitted = requested
+            while admitted * (1024 + 128 * capacity) > 65536 and admitted > 2:
+                admitted //= 2
+            if admitted * (1024 + 128 * capacity) > 65536:
+                raise ValueError("native grouped Q8 capacity cannot fit")
+            return f"launch_grouped<{capacity}, {admitted}, {groups}>"
+        text = re.sub(r"launch_grouped<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>", grouped, text)
+        # The original 128-token grouped route permits one or two pipeline stages. Its 2-K-warp
+        # two-stage storage needs 69,632 bytes; one stage preserves its full mathematical tile.
+        text = text.replace("Q8A16GroupedSlicedKMmaSchedule<128, 2, 4, 2, 1,",
+                            "Q8A16GroupedSlicedKMmaSchedule<128, 2, 4, 1, 1,")
+    if relative.endswith("q8/q8_ksplit_config.h"):
+        # The actual staging layout is codes[16][64*W], BF16 activations[W][64*T]
+        # and either shared scales[16][4*W] or direct-scale placeholders[16][1].
+        # Its union with 64*W*T bytes of partials is therefore dominated by staging.
+        # RDNA4 permits 64 KiB per workgroup. Retain the requested K partition when
+        # it fits; otherwise keep the largest fitting partition, without SM emulation.
+        anchor = "    static constexpr int kKWarps            = KWarps;"
+        if text.count(anchor) != 1:
+            raise ValueError("missing original Q8 K-split schedule anchor")
+        replacement = """    static constexpr int kNativeStagingPerWarp = 1024 + 128 * TileTokens +
+        (ScaleAccess == Q8KSplitScaleAccess::Shared ? 64 : 0);
+    static constexpr int kNativeFixedScaleBytes =
+        ScaleAccess == Q8KSplitScaleAccess::Shared ? 0 : 16;
+    static constexpr int kKWarps =
+        KWarps * kNativeStagingPerWarp + kNativeFixedScaleBytes <= 65536 ? KWarps :
+        (KWarps == 16 && 8 * kNativeStagingPerWarp + kNativeFixedScaleBytes <= 65536 ? 8 : 4);
+    static constexpr int kNativeStagingBytes =
+        kKWarps * kNativeStagingPerWarp + kNativeFixedScaleBytes;
+    static_assert(kNativeStagingBytes <= 65536,
+                  "native Q8 K-split staging exceeds RDNA4 workgroup LDS");"""
+        text = text.replace(anchor, replacement)
+        for member in ("kThreads", "kGroupK", "kRowsPerLoaderWarp"):
+            pattern = rf"(static constexpr int {member}\s*=\s*[^;]+);"
+            matches = list(re.finditer(pattern, text))
+            if len(matches) != 1:
+                raise ValueError(f"missing Q8 dependent schedule member: {member}")
+            original = matches[0][0]
+            text = text.replace(original, original.replace("KWarps", "kKWarps"))
     if "/bf16/" in relative:
         # These two original [256,5120] schedules request 98,304 bytes of dynamic LDS. RDNA4's
         # per-workgroup limit is 65,536 bytes; retain the same production mathematics with half
@@ -213,7 +344,8 @@ def main() -> None:
     if source != output and source in output.parents:
         raise ValueError("Linear output must not be nested in its common source view")
     changes: list[str] = []
-    for subtree in ("src/ops/linear", "tests/ops/linear", "src/ops/common/rowsplit_a8_mma.cuh"):
+    for subtree in ("src/ops/linear", "tests/ops/linear", "src/ops/common/rowsplit_a8_mma.cuh",
+                    "tests/ops/direct_bf16_weight.h"):
         selected = source / subtree
         paths = [selected] if selected.is_file() else sorted(selected.rglob("*"))
         for path in paths:

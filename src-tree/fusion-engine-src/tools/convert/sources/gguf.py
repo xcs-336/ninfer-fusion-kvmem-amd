@@ -1,7 +1,7 @@
 """Minimal GGUF v3 reader and the PrismML ternary block decoders.
 
 Only what the ternary Bonsai 2 converter needs: the key/value header, the
-tensor directory, memory-mapped tensor bytes, exact decoders for the ``PQ2_0``
+tensor directory, bounded positional tensor reads, exact decoders for the ``PQ2_0``
 and ``PTQ1_0`` ternary block formats, and the direct F32/F16/BF16 words. The
 reader has no gguf-py dependency and tolerates a truncated data section, so the
 saved header sample of a large file can be inspected without the whole file.
@@ -17,12 +17,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import prod
 from pathlib import Path
+import os
 import struct
 from typing import Any, Sequence
 
 import numpy as np
 
 from tools.artifact.formats import GGUF_FORMATS_BY_TYPE
+from tools.artifact.file_io import discard_cached_pages, open_read, pread
 
 
 GGUF_MAGIC = b"GGUF"
@@ -170,7 +172,7 @@ class _Cursor:
 
 
 class GGUFFile:
-    """Parse the header of a GGUF v3 file and expose memory-mapped tensor bytes."""
+    """Parse GGUF v3 and read requested tensor ranges without retaining a file mapping."""
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -208,13 +210,30 @@ class GGUFFile:
         self.alignment = int(kv.get("general.alignment", DEFAULT_ALIGNMENT))
         self.header_bytes = cursor.position
         self.data_offset = align_up(self.header_bytes, self.alignment)
-        self._map = np.memmap(self.path, dtype=np.uint8, mode="r")
+        # A whole-file mapping retains touched source pages in the process's
+        # working set on Windows. Conversion revisits many tensors, so a 7 GiB
+        # source could consume the host margin despite small row chunks.
+        self._fd = open_read(self.path)
+
+    def close(self) -> None:
+        descriptor = getattr(self, '_fd', None)
+        if descriptor is not None:
+            self._fd = None
+            os.close(descriptor)
+
+    def __del__(self) -> None:
+        # Match the previous mapping's automatic handle cleanup for callers
+        # that do not use the context manager, including partial construction.
+        try:
+            self.close()
+        except (OSError, AttributeError):
+            pass
 
     def __enter__(self) -> GGUFFile:
         return self
 
     def __exit__(self, *_exc) -> None:
-        self._map = None
+        self.close()
 
     @property
     def data_bytes_available(self) -> int:
@@ -242,7 +261,15 @@ class GGUFFile:
                 f"{name}: bytes [{byte_begin},{end}) are past the end of the file "
                 f"({self.file_bytes} bytes; the data section may be truncated)"
             )
-        return self._map[start:stop]
+        if self._fd is None:
+            raise ValueError(f'{self.path}: GGUF source is closed')
+        raw = pread(self._fd, stop - start, start)
+        if len(raw) != stop - start:
+            raise ValueError(f'{name}: short source read at [{start},{stop})')
+        discard_cached_pages(self._fd, start, stop - start)
+        # Arrays retain only these immutable bytes, so they remain valid after
+        # source close without pinning unrelated tensor pages or a file handle.
+        return np.frombuffer(raw, dtype=np.uint8)
 
     def _row_bytes(self, info: TensorInfo) -> int:
         if len(info.shape) != 2:

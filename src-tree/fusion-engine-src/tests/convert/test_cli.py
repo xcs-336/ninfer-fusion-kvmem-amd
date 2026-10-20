@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 from tools.artifact.reader import Artifact
 from tools.artifact.schema import binding_parts
 from tools.convert.__main__ import _recipe_parts
@@ -30,7 +32,8 @@ def test_recipe_parts_keeps_path_colons():
     )
 
 
-def test_cli_custom_sources_method_template_and_shards(tmp_path):
+@pytest.mark.parametrize("explicit_identity", [False, True])
+def test_cli_custom_sources_method_template_and_shards(tmp_path, explicit_identity):
     source = tmp_path / "source"
     source.mkdir()
     config = {
@@ -95,6 +98,8 @@ def configure(model, recipe, sources):
         "--rows-per-chunk",
         "3",
     ]
+    if explicit_identity:
+        command += ["--model-id", "canonical-model", "--weights-id", "canonical-weights"]
     root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
         command,
@@ -107,6 +112,15 @@ def configure(model, recipe, sources):
     with Artifact(output) as artifact:
         assert set(artifact.directory.components) == {"text"}
         assert artifact.directory.metadata == {"name": "my-training-run"}
+        identity = artifact.directory.identity
+        if explicit_identity:
+            assert identity == {"model_id": "canonical-model", "weights_id": "canonical-weights"}
+        else:
+            assert identity["model_id"] == "my-training-run"
+            assert identity["weights_id"].startswith("conversion-")
+        report = json.loads(Path(str(output) + ".conversion.json").read_text(encoding="utf-8"))
+        assert report["identity"] == identity
+        assert report["artifact_id"] == artifact.artifact_id.hex()
         assert len(artifact.directory.files) > 1
         resource = artifact.directory.components["text"]["resources"][
             "chat_template.jinja"

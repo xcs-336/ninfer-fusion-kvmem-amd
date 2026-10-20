@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -174,13 +175,17 @@ int run(DType type, bool shared_row, int rows, bool dense, bool empty, int force
         Tensor(d_keys.p, type, {Dim, 64, KVHeads, physical_pages}),
         Tensor(d_values.p, type, {Dim, 64, KVHeads, physical_pages}),
         Tensor(d_tables.p, DType::I32, {logical_pages, 2})};
-    WorkspaceArena workspace(shared_row ? 0 : ops::selected_block_attention_workspace_capacity_bytes(rows));
+    // The shared-row overload has no workspace. DeviceArena deliberately
+    // rejects an owning zero-byte allocation, so construct it only for the
+    // batch overload that actually consumes transient storage.
+    std::optional<WorkspaceArena> workspace;
+    if (!shared_row) { workspace.emplace(ops::selected_block_attention_workspace_capacity_bytes(rows)); }
     Stream stream;
     const auto launch = [&] {
         if (shared_row) {
             ops::selected_block_attention(q, p, 1, selected, count, cache, out, stream.value);
         } else {
-            ops::selected_block_attention(q, p, row_ids, selected, count, cache, workspace, out, stream.value);
+            ops::selected_block_attention(q, p, row_ids, selected, count, cache, *workspace, out, stream.value);
         }
     };
     if (graph) {

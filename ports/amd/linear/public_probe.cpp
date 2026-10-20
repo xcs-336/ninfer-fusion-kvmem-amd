@@ -1,6 +1,6 @@
 // Bounded first-execution probes through the unchanged public Linear dispatch. These use the
 // upstream packed fixtures, independent FP64 oracle, numerical criteria, guards and preservation
-// checks. They complement the full original suites, whose largest FP32 weight oracle exceeds 4 GiB.
+// checks. They complement the full original suites with smaller first-execution fixtures.
 #include "ops/linear/linear_test_common.h"
 
 #include <array>
@@ -15,6 +15,11 @@ using namespace ninfer::test::linear;
 constexpr std::array kA16{
     Invocation{1}, Invocation{3}, Invocation{17, CallForm::Policy, ops::LinearPolicy::A16Only, true},
     Invocation{33},
+};
+// The registered Q6 vision contraction admits four-token groups, including graph replay.
+constexpr std::array kQ6A16{
+    Invocation{4}, Invocation{8}, Invocation{16}, Invocation{32},
+    Invocation{36, CallForm::Policy, ops::LinearPolicy::A16Only, true},
 };
 constexpr std::array kA8{
     Invocation{1, CallForm::Policy, ops::LinearPolicy::AllowA8},
@@ -67,7 +72,10 @@ int main(int argc, char** argv) {
                                  {family.n, family.k, family.seed, Comparison::SampledRows,
                                   true, invocations});
             };
-            int failures = run("PUBLIC_A16", ActivationCompute::A16, kA16);
+            const std::span<const Invocation> a16_invocations =
+                family.name == "q6" ? std::span<const Invocation>(kQ6A16)
+                                    : std::span<const Invocation>(kA16);
+            int failures = run("PUBLIC_A16", ActivationCompute::A16, a16_invocations);
             if (family.name == "fp8") {
                 failures += run("PUBLIC_A8", ActivationCompute::A8, kA8);
             } else if (family.name == "nvfp4") {

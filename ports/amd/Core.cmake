@@ -4,7 +4,11 @@ set(_prepared "${CMAKE_CURRENT_BINARY_DIR}/generated-stage")
 file(GLOB_RECURSE _core_inputs CONFIGURE_DEPENDS
   "${_engine}/src/*.h" "${_engine}/src/*.hpp" "${_engine}/src/*.cuh" "${_engine}/src/*.cpp" "${_engine}/src/*.cu"
   "${_engine}/include/*.h" "${_engine}/include/*.hpp" "${_engine}/tests/*.h" "${_engine}/tests/*.hpp" "${_engine}/tests/*.cuh"
-  "${_engine}/tests/*.cpp" "${_engine}/tests/*.cu")
+  "${_engine}/tests/*.cpp" "${_engine}/tests/*.cu"
+  "${_engine}/apps/*.h" "${_engine}/apps/*.hpp" "${_engine}/apps/*.cuh"
+  "${_engine}/apps/*.cpp" "${_engine}/apps/*.cu"
+  "${_engine}/bench/*.h" "${_engine}/bench/*.hpp" "${_engine}/bench/*.cuh"
+  "${_engine}/bench/*.cpp" "${_engine}/bench/*.cu")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_core_inputs}
   "${CMAKE_CURRENT_LIST_DIR}/prepare_core.py" "${CMAKE_CURRENT_LIST_DIR}/core/hip_vmm_address.h"
   "${CMAKE_CURRENT_LIST_DIR}/core/hip_profiler.cpp" "${CMAKE_CURRENT_LIST_DIR}/core/hip_intrinsics.h"
@@ -98,6 +102,10 @@ endif()
 option(NINFER_AMD_RUNTIME_SUPPORT "Build real Engine admission/context/profile support and original tests" OFF)
 if(NINFER_AMD_RUNTIME_SUPPORT)
   include("${CMAKE_CURRENT_LIST_DIR}/RuntimeSupport.cmake")
+endif()
+option(NINFER_AMD_ENGINE "Build the original public Engine and complete fixed model implementations" OFF)
+if(NINFER_AMD_ENGINE)
+  include("${CMAKE_CURRENT_LIST_DIR}/Engine.cmake")
 endif()
 # Publish the fully adapted source view once. Configuring an unchanged family
 # must not change timestamps and trigger expensive device-code recompilation.

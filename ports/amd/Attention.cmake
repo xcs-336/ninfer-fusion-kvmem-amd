@@ -37,10 +37,16 @@ endforeach()
 foreach(_part storage context packed)
   add_library(ninfer_attention_${_part}_ops_amd STATIC ${_attention_${_part}_paths})
   ninfer_native_hip(ninfer_attention_${_part}_ops_amd)
+  # Exact E8 stored codes require IEEE FP32 division/sqrt. Keep the native
+  # compiler's correct-rounding mode explicit alongside the scoped RN codec.
+  target_compile_options(ninfer_attention_${_part}_ops_amd PRIVATE
+    -fhip-fp32-correctly-rounded-divide-sqrt)
   target_link_libraries(ninfer_attention_${_part}_ops_amd PUBLIC ninfer_basic_ops_amd)
 endforeach()
 add_library(ninfer_attention_ops_amd STATIC ${_attention_paths})
 ninfer_native_hip(ninfer_attention_ops_amd)
+target_compile_options(ninfer_attention_ops_amd PRIVATE
+  -fhip-fp32-correctly-rounded-divide-sqrt)
 target_link_libraries(ninfer_attention_ops_amd PUBLIC ninfer_basic_ops_amd
   ninfer_attention_storage_ops_amd ninfer_attention_context_ops_amd ninfer_attention_packed_ops_amd)
 

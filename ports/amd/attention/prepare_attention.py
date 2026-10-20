@@ -205,6 +205,45 @@ def prompt_launch(source):
 
 edit(prefix + 'prompt.cu', prompt_launch)
 
+
+def exact_e8_root_arithmetic(source):
+    # E8 root bytes are a public exact codec boundary. In the installed HIP
+    # compiler, CUDA-spelled _rn wrappers default to ordinary expressions and
+    # native sqrt unless OCML_BASIC_ROUNDED_OPERATIONS is defined before the
+    # implicit runtime header. Ordinary multiply/subtract can contract into an
+    # FMA, changing residual-axis tie decisions. The SDK declares sqrt/div RTE
+    # functions that its shipped ocml.bc does not actually define, so do not
+    # use those un-linkable declarations. The shipped sqrt_f32 lowers to exact
+    # llvm.sqrt.f32, and ordinary division is correctly rounded under HIP's
+    # default HIPCorrectlyRoundedDivSqrt mode (explicit in the build policy).
+    # Neither operation below has afn/arcp/contract relaxation in the IR.
+    for operation in ('add', 'sub', 'mul'):
+        before = f'__f{operation}_rn('
+        if before not in source:
+            raise ValueError(f'Expected E8 root arithmetic intrinsic: {before}')
+        source = source.replace(before, f'__ocml_{operation}_rte_f32(')
+    source = replace_once(source, '__fsqrt_rn(', '__ocml_sqrt_f32(')
+    source = replace_once(source, '__fdiv_rn(', 'kv_cache_e8_root_divide_rn(')
+    anchor = '__device__ __forceinline__ KVCacheE8RootBlock kv_cache_e8_root_encode('
+    source = replace_once(source, anchor,
+        '''// Correctly rounded division is part of the stored E8 root code.
+__device__ __forceinline__ float kv_cache_e8_root_divide_rn(float numerator, float denominator) {
+#pragma clang fp contract(off)
+    return numerator / denominator;
+}
+
+__device__ __forceinline__ float kv_cache_e8_root_reciprocal_rn(float value) {
+    return kv_cache_e8_root_divide_rn(1.0f, value);
+}
+
+''' + anchor)
+    if source.count('__frcp_rn(') != 1:
+        raise ValueError('Expected one E8 root unit-direction reciprocal')
+    return source.replace('__frcp_rn(', 'kv_cache_e8_root_reciprocal_rn(')
+
+
+edit('src/ops/kv_cache/e8_root_codec.cuh', exact_e8_root_arithmetic)
+
 # A CUDA register-allocation ceiling is a schedule directive, not a semantic
 # value. Let AMD's compiler allocate native VGPRs; do not copy an NVIDIA count.
 for path in (generated / 'src/ops/softmax_attention').rglob('*'):

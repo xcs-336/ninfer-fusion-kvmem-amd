@@ -150,6 +150,14 @@ def main(argv=None):
     parser.add_argument("--proposal-rows", type=int, default=131072)
     parser.add_argument("--ranking", type=Path, default=DEFAULT_RANKING)
     parser.add_argument("--name", help="public instance name saved in metadata")
+    parser.add_argument(
+        "--model-id",
+        help="artifact model identity (default: --name, then the output filename stem)",
+    )
+    parser.add_argument(
+        "--weights-id",
+        help="canonical weights identity (default: a unique label for this conversion)",
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--rows-per-chunk", type=int, default=512)
@@ -206,6 +214,8 @@ def main(argv=None):
             recipe,
             args.out,
             name=args.name,
+            model_id=args.model_id,
+            weights_id=args.weights_id,
             provenance=provenance,
             device=args.device,
             rows_per_chunk=args.rows_per_chunk,
