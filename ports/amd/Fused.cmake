@@ -103,9 +103,9 @@ foreach(_family linear_add linear_swiglu linear_pair)
     set(_tests q8_a16)
   endif()
   foreach(_test IN LISTS _tests)
-    if(_test STREQUAL "w4_cublas_prefill" AND
+    if((_test STREQUAL "w4_cublas_prefill" OR _test STREQUAL "q4a8_int") AND
        (NOT TARGET ninfer_gdn_input_proj_ops_amd OR NOT TARGET ninfer_attn_input_proj_ops_amd))
-      message(STATUS "Unchanged fused BLAS suite pending complete GDN/attention projection families")
+      message(STATUS "Unchanged fused ${_test} suite pending complete GDN/attention projection families")
       continue()
     endif()
     set(_target "ninfer_amd_${_family}_${_test}_test")
@@ -116,6 +116,11 @@ foreach(_family linear_add linear_swiglu linear_pair)
     target_link_libraries(${_target} PRIVATE ${_support})
     if(_test STREQUAL "w4_cublas_prefill")
       target_link_libraries(${_target} PRIVATE ninfer_linear_add_ops_amd
+        ninfer_gdn_input_proj_ops_amd ninfer_attn_input_proj_ops_amd)
+    elseif(_test STREQUAL "q4a8_int")
+      # The original suite directly calls the real GDN and attention A8
+      # entry points as well as the shared LinearSwiGLU/LinearAdd A8 kernels.
+      target_link_libraries(${_target} PRIVATE
         ninfer_gdn_input_proj_ops_amd ninfer_attn_input_proj_ops_amd)
     endif()
     ninfer_add_gpu_test(${_target} ${_target} 1800)

@@ -3,10 +3,13 @@
 开发基线：`1314521gjy/ninfer-fusion-kvmem@4e93bb8ab89b583653a9d16235582c688226ff05`。
 主引擎位于 `src-tree/fusion-engine-src/`。保留其 KVMem 环、host-backed 复用和融合算子设计。
 
-当前是适配开发分支，完整 `.ninfer` Engine 尚未在 AMD 上完成构建或推理。
-Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 内核并验证；
-其他矩阵片段、四套 GDN 和原生权重恢复/Graph 也已通过下述独立测试；
-public Linear 的十一套完整原数学测试已通过；causal attention 和模型执行仍在接入。
+当前是适配开发分支。实际 public `.ninfer` Engine 与五个原产品已完成 AMD 构建，
+Bonsai BF16 KV 的非推测和 MTP2 首次短推理均通过。两次均输出 `AMD native.`，
+生成 token ID 相同；这只是四 token、Graph 关闭的冒烟结果，尚无端到端性能优势结论。
+Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 并验证；
+其他矩阵片段、四套 GDN、权重恢复/Graph、十一套完整 public Linear 原测试已通过。
+完整 Attention 首次测试暴露 NVFP4 解码和 LDS 容量问题；局部修复后原 NVFP4 专项及
+默认完整 Attention 均通过，其他独立注册模式仍须分别验证。
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
 ## 已验证的硬件结果
@@ -41,7 +44,7 @@ HIPIFY 原许可保留在生成目录。生成阶段不自动翻译 PTX；生产
 `NINFER_AMD_ATTENTION=ON` 接入全部原生产注意力/存储格式。context、sliding、packed、
 KV append/materialize/stream 的独立测试已实际编译链接。packed、sliding、context、
 KV stream、完整 KV append、BF16 KV materialize 及 selected-block 的下述数学测试通过。
-完整 causal 库仍待 O3 构建，不能把独立子库的链接当作全部注意力验收。
+完整 causal 库及原完整测试程序已实际 O3 编译链接；各独立模式仍须分别完成数值验收。
 `NINFER_AMD_LINEAR=ON` 接入原 public Linear 分派与格式家族。140 个生产编译单元、共用依赖、
 十一套原数学可执行文件及有界探针已实际 O3 编译链接。
 两者都需要 Core 和 Basic Ops；不能借 HIP 的 major/minor 号选择 NVIDIA 调度表。
@@ -54,16 +57,22 @@ KV stream、完整 KV append、BF16 KV materialize 及 selected-block 的下述�
 `NINFER_AMD_FUSED=ON` 接入原融合投影家族；`NINFER_AMD_AUXILIARY_OPS=ON` 接入
 候选选择、分组卷积、KVMem 和稀疏 MoE。`NINFER_AMD_ENGINE=ON` 的目标图读取完整原有
 public Engine、文本、媒体、模型 loading/runtime 和原测试清单，依赖上述真实生产库。
-这些新增目标尚未完成整体构建与运行，不是已验收的模型入口。
+这些实际生产库、完整 Engine 与五个产品均已编译链接；整模型质量和性能仍待验收。
 
 197 个原融合生产编译单元及八个对应静态库已实际完成 O3 编译与归档。
 这轮构建曾在原 TopK 测试的 Graph API 签名适配处停止；类型安全适配修复后，Core Graph
 原测试及 TopK 完整数值/Graph 套件已通过，Pair 分组边界探针也通过。
-完整融合测试程序尚未全部链接或运行；combined GGUF 原测试补链接实际 SDK compiler-rt 后，
+剩余 28 个融合/辅助原测试程序现已全部链接；原 Q4 A16 LinearAdd 完整数学测试通过，
+其他 63 项注册与独立 KVMem 资格仍待运行。combined GGUF 原测试补链接实际 SDK compiler-rt 后，
 已完成真实链接与全套数学验证，原 oracle 未改。
 原有超过 64 KiB LDS 的四处统一调度已通过实际编译，容量断言与数学 oracle 保留。
 `NINFER_AMD_PRODUCTS=ON` 现可接入原 CLI、serve、calibrate、perplexity 和推理 benchmark；
-其开关默认关闭，必须同时启用完整 Engine。完整产品目标图已实际配置通过，应用构建与运行仍待完成。
+其开关默认关闭，必须同时启用完整 Engine。五个真实产品均已构建，原 CLI 已完成首次模型推理。
+
+原 Engine、模板和产品的 39 项 CPU 合约已全部通过；额外七项 AMD 环境/profile/help
+合约也通过。CPU 专家保留原计算体，以函数局部 ISA 与 CPUID/OS 状态检查选择标量、
+AVX2 和 AVXVNNI。本机三条已准入路径均通过独立整数编码/行计算与稀疏 FP64 forward
+验证；该验证已作为 host-only CTest 接入，不给整个二进制强加 AVX ISA。
 
 原 artifact reader、admission、context cost、resource manager 和 prefix-cache index 的
 五套 CPU 测试均已在实际 CMake/O3 构建中通过。修正了原 resource-manager 测试夹具缺失的
@@ -139,6 +148,18 @@ KV materialize 首次完整运行在动态共享内存设置处失败：原 Fuse
 该修正已实际 O3 重编与全套复测通过，另保留全部 87 次 Graph 重放，最低可用 RAM
 6.271 GiB。合法的 49,664 字节路由继续使用真实 HIP 属性 API。该套件验证 BF16 K/V，
 不能据此宣称其他缓存 codec 的 materialize 数学已验证。
+
+原默认完整 Attention（causal、plain/packed、context）现已实际通过，保留原始 FP64
+oracle、缓存字节、映射、边界和保护检查。首次 NVFP4 异常来自当前 SDK 的 FP4→half
+软件分支：负零位码被数值转换成 32768。适配仅将实际 KV 的两处 FP16 扩展改走正确的
+FP32 解码再精确转换为 FP16；SDK 文件和持久缓存表示均不改变。独立实际 GPU 测试覆盖
+全部 256 个打包字节、127 个合法尺度，1,040,384 个 FP16/BF16 结果逐位通过，含负零。
+
+另一失败点是大 RowTiles 的量化 small-T 调度，静态与动态 LDS 合计超过 64 KiB。
+适配缩小其 key contraction，并保持 P 的原 swizzle stride；编译期检查计入所有固定数组
+与动态 arena。336 个实际编译内核的资源元数据核对通过：FP8/NVFP4/K8V4 最大总 LDS
+分别为 59,840/52,160/56,192 字节。修复后 NVFP4 原专项及默认完整套件均 exit0，
+完整套件最低可用 RAM 3.566 GiB。DFlash2、PackGQA、wide 等独立注册模式尚未据此全部验收。
 
 Flash-Next 原生产 NVFP4 MoE gate/up 的三种调度已限制到真实 64 KiB LDS 预算；九次真实
 生产 phase 调用、124,800 个 BF16 输出通过独立 packed-weight FP64 oracle，含 expert/token
@@ -296,7 +317,9 @@ model_id/weights_id 参数与报告；缺省权重身份每次唯一，显式标
 不是相同 codec，压缩模式需单列品质与性能取舍。冷启动测试还须关闭驻留提示词复用，
 并确认缓存 token 为零；仅设置 `cache-ram=0` 不足以保证这一点。
 
-后续必须完成内存借用、其他算子/矩阵格式、attention、AMD 调度和完整 Engine 的接入。
+后续仍须完成未验收的内存借用、算子/矩阵格式、Attention 模式、设备校准、Graph 与整模型
+质量/性能验证。只有同模型、有效权重、上下文和资源预算下显著且可重复地优于 llama.cpp，
+才正式迁移现有工作；当前没有这样的比较结论。
 AMD gfx1201 不能当作 NVIDIA sm_120 使用，NVIDIA 路由表与性能数字也不适用于本卡。
 KVMem 检索或环形缓存仍应遵守原仓对超池长提示词的正确性边界，不能视作全量注意力等价。
 

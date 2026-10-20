@@ -64,8 +64,18 @@ int main() {
         environment.compute_capability_major = 120;
         environment.compute_capability_minor = 99;
         environment.cuda_compile_version = "wrong-CUDA-compile";
+        // The production formatter accepts resolved Engine options, as in the
+        // original request-log fixture. Empty optionals are not its contract.
+        ninfer::EngineOptions engine_options{};
+        engine_options.context_cache.device_state_slots = 2;
+        engine_options.context_cache.host_state_slots = 3;
+        engine_options.context_cache.host_kv_capacity_bytes = 64ULL << 20;
+        engine_options.context_cache.max_private_continuations = 4;
+        engine_options.context_cache.max_shared_prefixes = 2;
+        engine_options.context_cache.max_long_anchors_per_continuation = 2;
+        engine_options.context_cache.max_cache_markers_per_request = 4;
         const Json server = Json::parse(ninfer::serve::format_server_start_json(
-            "native-test", 0, {}, {}, {}, "native-model", {}, {}, environment, {}));
+            "native-test", 0, {}, engine_options, {}, "native-model", {}, {}, environment, {}));
         failures += native_record(server.at("environment"));
         failures += check(server.at("environment").at("gpu_name") == benchmark.gpu_name,
                           "native GPU identity changed");

@@ -180,6 +180,20 @@ target_compile_options(ninfer_amd_flash_next_moe_gate_up_test PRIVATE -fno-fast-
 target_link_libraries(ninfer_amd_flash_next_moe_gate_up_test PRIVATE ninfer_flash_next_moe_kernels_amd)
 ninfer_add_gpu_test(ninfer_amd_flash_next_moe_gate_up_test ninfer_amd_flash_next_moe_gate_up_test 120)
 
+# This CPU-only qualification includes the actual generated expert header.
+# Keep its scalar dispatcher on the baseline ISA and isolate SIMD features in
+# the production functions' local targets; no HIP runtime/link is required.
+add_executable(ninfer_amd_cpu_expert_a16_test
+  "${CMAKE_CURRENT_LIST_DIR}/engine/tests/cpu_expert_qualification.cpp")
+target_include_directories(ninfer_amd_cpu_expert_a16_test PRIVATE "${_generated}/src")
+target_compile_options(ninfer_amd_cpu_expert_a16_test PRIVATE -fno-fast-math -ffp-contract=off)
+ninfer_add_gpu_command_test(ninfer_amd_cpu_expert_a16_test 180
+  "$<TARGET_FILE:ninfer_amd_cpu_expert_a16_test>")
+ninfer_add_gpu_command_test(ninfer_amd_cpu_expert_a16_forward_test 180
+  "$<TARGET_FILE:ninfer_amd_cpu_expert_a16_test>" --forward)
+set_tests_properties(ninfer_amd_cpu_expert_a16_test ninfer_amd_cpu_expert_a16_forward_test
+  PROPERTIES LABELS "cpu;cpu_expert")
+
 # Preserve every original test's source, arguments and skip contract. Tests that
 # can touch device state use the shared lock; pure text/media tests stay on CPU.
 string(JSON _engine_test_count LENGTH "${_engine_manifest}" tests)

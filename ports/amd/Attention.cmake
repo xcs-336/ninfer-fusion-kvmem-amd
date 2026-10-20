@@ -121,6 +121,11 @@ ninfer_add_gpu_test(ninfer_amd_selected_block_attention_op_test
 
 # This narrow exact test qualifies the replacement for PTX's producer-only
 # named barriers independently before the enclosing arithmetic is qualified.
+add_executable(ninfer_amd_kv_nvfp4_decode_test attention/test_nvfp4_decode.cu)
+ninfer_native_hip(ninfer_amd_kv_nvfp4_decode_test)
+target_compile_options(ninfer_amd_kv_nvfp4_decode_test PRIVATE -fno-fast-math -ffp-contract=off)
+ninfer_add_gpu_test(ninfer_amd_kv_nvfp4_decode_test ninfer_amd_kv_nvfp4_decode_test 30)
+
 add_executable(ninfer_amd_attention_partial_barrier_test attention/test_partial_barrier.cu)
 ninfer_native_hip(ninfer_amd_attention_partial_barrier_test)
 target_include_directories(ninfer_amd_attention_partial_barrier_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}/attention")

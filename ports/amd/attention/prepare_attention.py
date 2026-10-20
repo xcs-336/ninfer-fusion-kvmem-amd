@@ -179,6 +179,63 @@ def small_int8_occupancy(source):
 edit(prefix + 'small_t.cu', small_int8_occupancy)
 
 
+def quantized_small_t_geometry(source, family):
+    # gfx1201 has 64 KiB total LDS, including fixed and dynamic allocation.
+    # Keep the small original Bc32 schedule when its fixed query/P tiles fit;
+    # larger row tiles use a 16-key contraction with the same page addressing,
+    # masks, online-softmax order within each contraction and output geometry.
+    condition = 'RowTiles == 3' if family == 'nvfp4' else 'RowTiles >= 2'
+    source = replace_once(source,
+        'constexpr int KeyBlock             = 32;',
+        f'constexpr int KeyBlock             = {condition} ? 16 : 32;')
+    original = ('constexpr int MinBlocks            = RowTiles <= 2 ? 2 : 1;'
+                if family == 'nvfp4' else
+                'constexpr int MinBlocks            = TokenTile == 1 ? 2 : 1;')
+    return replace_once(source, original,
+                        'constexpr int MinBlocks            = 1; // native LDS admits one CTA per CU')
+
+
+def quantized_small_t_storage(source, family):
+    source = replace_once(source,
+        'constexpr int PStride              = Bc == 32 ? 64 : Bc;',
+        'constexpr int PStride              = Bc <= 32 ? 64 : Bc;')
+    source = replace_once(source, 'static_assert(Bc == 32 || Bc == 64);',
+                          'static_assert(Bc == 16 || Bc == 32 || Bc == 64);')
+    dynamic = {'nvfp4': '(CompactKVStage ? 3u : 5u) * Bc * D',
+               'fp8': '6u * Bc * D', 'k8v4': '11u * Bc * D / 2u'}[family]
+    anchor = '    __shared__ std::int32_t physical_pages_s[PageIds];'
+    return replace_once(source, anchor, anchor + f'''
+    // Every declared fixed array is 16-byte aligned at these geometries. This
+    // upper bound includes the unused dynamic-mode placeholder as well.
+    static_assert(sizeof(q_s) + sizeof(static_arena) + sizeof(p_s) + sizeof(alpha_s) +
+                      sizeof(k_scale_s) + sizeof(v_scale_s) + sizeof(physical_pages_s) +
+                      (DynamicArena ? {dynamic} : 0u) <= 65536,
+                  "gfx1201 causal attention total LDS exceeds 64 KiB");''')
+
+
+for family in ('nvfp4', 'fp8', 'k8v4'):
+    edit(prefix + f'small_t_{family}.cu',
+         lambda source, family=family: quantized_small_t_geometry(source, family))
+    edit(prefix + f'small_t_{family}.cuh',
+         lambda source, family=family: quantized_small_t_storage(source, family))
+
+
+def nvfp4_half_signed_zero(source):
+    # The installed SDK's FP4->half fallback numerically casts the half negative
+    # zero word 0x8000 to _Float16, producing 32768 instead of -0. Its FP32
+    # decoder bitcasts the sign correctly. All E2M1 values are exactly FP16, so
+    # the explicit FP32->FP16 conversion adds no rounding or format change.
+    before = '        const __half2 value = __hmul2(static_cast<__half2>(encoded), scale2);'
+    if source.count(before) != 2:
+        raise ValueError('Expected both actual KV NVFP4 FP16 expansion helpers')
+    return source.replace(before,
+        '        const float2 decoded = static_cast<float2>(encoded);\n'
+        '        const __half2 value = __hmul2(__floats2half2_rn(decoded.x, decoded.y), scale2);')
+
+
+edit('src/ops/kv_cache/nvfp4_group16_codec.cuh', nvfp4_half_signed_zero)
+
+
 def prompt_launch(source):
     source = replace_once(source,
                           '#include "ops/softmax_attention/dense/causal_cache/prompt_i8_fast.cuh"',

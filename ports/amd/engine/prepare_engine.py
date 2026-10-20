@@ -13,6 +13,7 @@ import sys
 # to sys.path automatically.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import moe_resources
+import cpu_expert
 
 
 parser = argparse.ArgumentParser()
@@ -358,6 +359,30 @@ hipError_t topk_max_pairs(void* temp, std::size_t& temp_bytes, const std::uint64
 ''' + source[end:]
     return source
 
+
+edit('src/models/qwen3_8_flash_next/impl/cpu_expert_nvfp4.h', cpu_expert.transform)
+manifest['changes'].append({
+    'mechanism': 'original MSVC-only CPU expert compilation assumed global intrinsic features',
+    'replacement': 'Clang local SSSE3/AVX2/AVXVNNI targets plus CPUID/max-leaf/OSXSAVE/XCR0 dispatch and exact scalar diagnostic fallbacks',
+    'guarantee': 'all original scalar/AVX2/AVXVNNI A16 math and dispatch tiers retained; no global ISA flag or AVX512 claim; runtime qualification pending',
+})
+
+
+def native_ple_scale_bits(source):
+    before = '''    const __half_raw hr{scale_bits};
+    const float scale = __half2float(__half(hr));'''
+    if source.count(before) != 1:
+        raise ValueError('Expected one original packed PLE FP16 scale bit conversion')
+    return source.replace(before,
+        '    const float scale = __half2float(__ushort_as_half(scale_bits));')
+
+
+edit('src/models/qwen3_8_flash_next/impl/ple_decode_kernels.cu', native_ple_scale_bits)
+manifest['changes'].append({
+    'mechanism': 'CUDA uint16 aggregate initialization of __half_raw has a different HIP member type',
+    'replacement': 'native __ushort_as_half bit reinterpretation before the original FP16-to-FP32 scale conversion',
+    'guarantee': 'identical stored FP16 bits, scale groups, Q4 codes and BF16 output arithmetic; no quantization format change',
+})
 
 edit('src/models/qwen3_8_flash_next/impl/qsa_indexer_kernels.cu', native_indexer_topk)
 manifest['changes'].append({

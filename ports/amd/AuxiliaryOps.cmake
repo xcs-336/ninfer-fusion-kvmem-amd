@@ -26,7 +26,9 @@ foreach(_family candidate_selector dynamic_grouped_conv kvmem sparse_moe)
   add_library(${_target} STATIC ${_paths})
   ninfer_native_hip(${_target})
   target_link_libraries(${_target} PUBLIC ninfer_basic_ops_amd)
-  if(_family STREQUAL "dynamic_grouped_conv")
+  if(_family STREQUAL "dynamic_grouped_conv" OR _family STREQUAL "sparse_moe")
+    # SparseMoE's original wrapper shares the production NVFP4 weight-format
+    # validator owned by Linear, in addition to its own expert kernels.
     target_link_libraries(${_target} PUBLIC ninfer_linear_ops_amd)
   elseif(_family STREQUAL "kvmem")
     # Preserve the original imported qw3/ header spelling and attribution.
