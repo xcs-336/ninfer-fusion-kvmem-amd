@@ -1,12 +1,15 @@
-set(NINFER_PYTHON "${CMAKE_CURRENT_LIST_DIR}/../../../../runtime/python311-ninfer/python.exe"
-  CACHE FILEPATH "Python 3.11 for source generation")
 set(_engine "${CMAKE_CURRENT_LIST_DIR}/../../src-tree/fusion-engine-src")
 set(_generated "${CMAKE_CURRENT_BINARY_DIR}/generated")
-file(GLOB _core_inputs CONFIGURE_DEPENDS "${_engine}/src/core/*" "${_engine}/tests/*.h"
-  "${_engine}/tests/test_*.cpp" "${_engine}/tests/test_*.cu")
+file(GLOB_RECURSE _core_inputs CONFIGURE_DEPENDS
+  "${_engine}/src/*.h" "${_engine}/src/*.cuh" "${_engine}/src/*.cpp" "${_engine}/src/*.cu"
+  "${_engine}/include/*.h" "${_engine}/tests/*.h" "${_engine}/tests/*.cuh"
+  "${_engine}/tests/*.cpp" "${_engine}/tests/*.cu")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_core_inputs}
   "${CMAKE_CURRENT_LIST_DIR}/prepare_core.py" "${CMAKE_CURRENT_LIST_DIR}/core/hip_vmm_address.h"
-  "${CMAKE_CURRENT_LIST_DIR}/core/hip_profiler.cpp")
+  "${CMAKE_CURRENT_LIST_DIR}/core/hip_profiler.cpp" "${CMAKE_CURRENT_LIST_DIR}/core/hip_intrinsics.h"
+  "${CMAKE_CURRENT_LIST_DIR}/core/pdl.cuh" "${CMAKE_CURRENT_LIST_DIR}/ops/memory.cuh"
+  "${CMAKE_CURRENT_LIST_DIR}/ops/ldmatrix.cuh" "${CMAKE_CURRENT_LIST_DIR}/ops/mma.cuh"
+  "${CMAKE_CURRENT_LIST_DIR}/gfx12-mma/mma_bf16_gfx12.h")
 execute_process(COMMAND "${NINFER_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/prepare_core.py"
   --sdk "${ROCM_ROOT}" --output "${_generated}"
   RESULT_VARIABLE _generation_status COMMAND_ECHO STDOUT)
@@ -23,14 +26,14 @@ endforeach()
 list(APPEND _core_sources "${_generated}/src/core/hip_profiler.cpp")
 function(ninfer_native_hip target)
   target_compile_definitions(${target} PUBLIC __HIP_PLATFORM_AMD__=1 NINFER_HIP=1 NOMINMAX WIN32_LEAN_AND_MEAN)
-  target_include_directories(${target} PUBLIC "${ROCM_ROOT}/include" "${_generated}/src" "${_engine}/src" "${_engine}/include")
+  target_include_directories(${target} PUBLIC "${ROCM_ROOT}/include" "${_generated}/src" "${_generated}/include" "${_engine}/src" "${_engine}/include")
   target_link_libraries(${target} PUBLIC "${ROCM_ROOT}/lib/amdhip64.lib")
   target_link_options(${target} PUBLIC --hip-link --offload-arch=gfx1201 "--rocm-path=${ROCM_ROOT}")
   get_target_property(_sources ${target} SOURCES)
   foreach(_source IN LISTS _sources)
     if(_source MATCHES "\\.cu$")
       set_source_files_properties("${_source}" PROPERTIES LANGUAGE CXX COMPILE_OPTIONS
-        "-x;hip;--offload-arch=gfx1201;-mno-wavefrontsize64;--rocm-path=${ROCM_ROOT};--rocm-device-lib-path=${ROCM_ROOT}/lib/llvm/amdgcn/bitcode")
+        "-x;hip;--offload-arch=gfx1201;-mno-wavefrontsize64;-include;${_generated}/src/core/hip_intrinsics.h;--rocm-path=${ROCM_ROOT};--rocm-device-lib-path=${ROCM_ROOT}/lib/llvm/amdgcn/bitcode")
     endif()
   endforeach()
 endfunction()
@@ -58,6 +61,15 @@ foreach(_test decode_graph arena arena_ranks vmm_graph_remap evictable_kv_pool
   ninfer_native_hip(${_target})
   target_link_libraries(${_target} PRIVATE ninfer_core_amd)
   target_include_directories(${_target} PRIVATE "${_generated}/tests" "${_engine}/tests")
-  add_test(NAME ${_target} COMMAND ${_target})
-  set_tests_properties(${_target} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+  ninfer_add_gpu_test(${_target} ${_target} 30)
 endforeach()
+option(NINFER_AMD_BASIC_OPS "Build production basic operators and their original numerical tests" OFF)
+add_executable(ninfer_amd_production_bf16_gemm_test tests/gemm_bf16.cu)
+ninfer_native_hip(ninfer_amd_production_bf16_gemm_test)
+target_include_directories(ninfer_amd_production_bf16_gemm_test PRIVATE "${_generated}/tests")
+target_link_libraries(ninfer_amd_production_bf16_gemm_test PRIVATE ninfer_core_amd)
+target_compile_options(ninfer_amd_production_bf16_gemm_test PRIVATE -fno-fast-math -ffp-contract=off)
+ninfer_add_gpu_test(native_production_bf16_gemm ninfer_amd_production_bf16_gemm_test 60)
+if(NINFER_AMD_BASIC_OPS)
+  include("${CMAKE_CURRENT_LIST_DIR}/BasicOps.cmake")
+endif()

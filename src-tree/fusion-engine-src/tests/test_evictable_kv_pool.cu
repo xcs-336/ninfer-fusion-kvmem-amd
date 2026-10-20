@@ -247,7 +247,9 @@ int main() {
             const auto page_stride = static_cast<std::int32_t>(granule / 8 / 64 / 2);
             ninfer::KVPageGeometry geometry{
                 .planes = {{ninfer::DType::I8, page_stride, 2, 256},
-                           {ninfer::DType::FP16, 1, 2, 256}},
+                           // A 128-byte scale page stays below the lending threshold even
+                           // with AMD's 64 KiB granule (512 pages > kMaxLoanUnitPages).
+                           {ninfer::DType::FP16, 1, 1, 128}},
             };
             ninfer::LayoutBuilder builder;
             const ninfer::DeviceKVPagePoolLayout layout = ninfer::plan_device_kv_page_pool(

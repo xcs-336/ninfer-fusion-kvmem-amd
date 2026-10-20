@@ -48,6 +48,22 @@ int main(int argc, char** argv) {
         H(hipMemAddressReserve(&overlay_raw, 2 * g, g, nullptr, 0));
         auto* home = static_cast<unsigned char*>(home_raw);
         auto* overlay = static_cast<unsigned char*>(overlay_raw);
+        const bool split = argc > 3 && std::string(argv[3]) == "split";
+        if (split) {
+            H(hipMemAddressFree(home_raw, 4 * g));
+            H(hipMemAddressFree(overlay_raw, 2 * g));
+            const auto reserve_exact = [g](unsigned char* wanted) {
+                void* actual = nullptr;
+                H(hipMemAddressReserve(&actual, g, g, wanted, 0));
+                if (actual != wanted) {
+                    H(hipMemAddressFree(actual, g));
+                    throw std::runtime_error("HIP did not honor exact adjacent VA reservation");
+                }
+            };
+            for (std::size_t i = 0; i < 4; ++i) { reserve_exact(home + i * g); }
+            for (std::size_t i = 0; i < 2; ++i) { reserve_exact(overlay + i * g); }
+            std::cerr << "independent adjacent VA reservations established\n";
+        }
         std::array<hipMemGenericAllocationHandle_t, 4> handles{};
         hipMemAccessDesc access{};
         access.location = prop.location;
@@ -104,8 +120,13 @@ int main(int argc, char** argv) {
         H(hipMemUnmap(home + 2 * g, g));
         for (std::size_t rank = 0; rank < 2; ++rank) { H(hipMemUnmap(overlay + rank * g, g)); }
         for (auto handle : handles) { H(hipMemRelease(handle)); }
-        H(hipMemAddressFree(home, 4 * g));
-        H(hipMemAddressFree(overlay, 2 * g));
+        if (split) {
+            for (std::size_t i = 0; i < 4; ++i) { H(hipMemAddressFree(home + i * g, g)); }
+            for (std::size_t i = 0; i < 2; ++i) { H(hipMemAddressFree(overlay + i * g, g)); }
+        } else {
+            H(hipMemAddressFree(home, 4 * g));
+            H(hipMemAddressFree(overlay, 2 * g));
+        }
         return failures ? 1 : 0;
     } catch (const std::exception& error) {
         std::cerr << "FAIL: " << error.what() << '\n';

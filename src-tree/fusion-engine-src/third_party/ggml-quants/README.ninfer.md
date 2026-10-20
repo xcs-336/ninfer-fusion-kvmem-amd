@@ -8,3 +8,7 @@ NInfer compiles ggml's integer tensor-core matrix multiplication (`ggml-cuda/mmq
 dequantizers through the bridge in `src/ops/linear/gguf/`, as a separate archive, and keeps only the
 headers that code includes. Products of up to eight tokens use NInfer's own kernel
 (`ggml_bridge_vec.cuh`), which reads the grids and block structs from `ggml-common.h`.
+
+The AMD port restores `src/ggml-cuda/vendors/hip.h` unmodified from the same pinned
+commit. Its SHA256 is recorded in the AMD port's qualification notes. The native
+HIP path remains a GPU-kernel dependency of NInfer; it does not run a llama.cpp Engine.

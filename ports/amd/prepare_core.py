@@ -1,4 +1,4 @@
-"""Generate native HIP Core sources at build time; keep the CUDA tree intact.
+"""Generate a HIP source view and explicit qualified overrides; retain the CUDA tree.
 
 API spelling is taken from the installed AMD HIPIFY table. Semantic changes are
 explicit below. This does not translate PTX or claim the Engine is implemented.
@@ -19,12 +19,30 @@ out = args.output.resolve()
 hipify = args.sdk / 'libexec/hipify/hipify-perl'
 table = hipify.read_text(encoding='utf-8')
 pairs = dict(re.findall(r'\bk\("([A-Za-z_][A-Za-z_0-9]*)", "([A-Za-z_][A-Za-z_0-9]*)",', table))
-for symbol in ('__CUDACC__', '__CUDA_ARCH__'):
-    pairs.pop(symbol, None)
+pairs.pop('__CUDA_ARCH__', None)
+pairs['__CUDACC__'] = '__HIPCC__'
 pairs['cudaHostAlloc'] = 'hipHostMalloc'
+pairs['cudaFuncSetAttribute'] = 'ninfer_hip_func_set_attribute'
+pairs['__float2bfloat16_rn'] = '__float2bfloat16'
+pairs['__floats2bfloat162_rn'] = 'ninfer_hip_floats2bfloat162_rn'
+pairs['__float2bfloat162_rn'] = 'ninfer_hip_float2bfloat162_rn'
+# NVIDIA artifacts store OCP FP8, not AMD's older FNUZ representation. gfx1201
+# supports the OCP types natively; never change the exponent bias or -0 encoding.
+for suffix in ('e4m3', 'e5m2'):
+    for width in ('', 'x2', 'x4'):
+        pairs[f'__nv_fp8{width}_{suffix}'] = f'__hip_fp8{width}_{suffix}'
+pairs['__NV_E4M3'] = '__HIP_E4M3'
+pairs['__NV_E5M2'] = '__HIP_E5M2'
+pairs['cub'] = 'hipcub'
+for symbol in ('__shfl_sync', '__shfl_xor_sync', '__shfl_down_sync', '__shfl_up_sync',
+               '__ballot_sync', '__all_sync', '__any_sync', '__syncwarp',
+               '__reduce_max_sync', '__reduce_min_sync', '__reduce_add_sync',
+               '__reduce_and_sync', '__reduce_or_sync', '__reduce_xor_sync'):
+    pairs[symbol] = 'ninfer_hip_' + symbol.removeprefix('__')
 headers = {'cuda.h': 'hip/hip_runtime.h', 'cuda_runtime.h': 'hip/hip_runtime.h',
            'cuda_runtime_api.h': 'hip/hip_runtime_api.h', 'cuda_bf16.h': 'hip/hip_bf16.h',
-           'cuda_fp16.h': 'hip/hip_fp16.h'}
+           'cuda_fp16.h': 'hip/hip_fp16.h', 'cuda_fp8.h': 'hip/hip_fp8.h',
+           'math_constants.h': 'hip/hip_math_constants.h', 'cublas_v2.h': 'hipblas/hipblas.h'}
 word = re.compile(r'\b[A-Za-z_][A-Za-z_0-9]*\b')
 
 def write(relative, text):
@@ -33,7 +51,7 @@ def write(relative, text):
     if not destination.is_file() or destination.read_text(encoding='utf-8') != text:
         destination.write_text(text, encoding='utf-8', newline='\n')
 
-sources = list((engine / 'src/core').glob('*')) + list((engine / 'tests').glob('*'))
+sources = [path for folder in ('src', 'include', 'tests') for path in (engine / folder).rglob('*')]
 for source in sources:
     if not source.is_file() or source.suffix not in ('.h', '.cuh', '.cpp', '.cu'):
         continue
@@ -41,7 +59,31 @@ for source in sources:
     text = source.read_text(encoding='utf-8-sig')
     for original, replacement in headers.items():
         text = text.replace(f'<{original}>', f'<{replacement}>')
+    text = re.sub(r'<cub/([^>]+)\.cuh>', r'<hipcub/\1.hpp>', text)
     text = word.sub(lambda m: pairs.get(m[0], m[0]), text)
+    if source.name == 'sampling_device.cuh':
+        for scalar in ('unsigned long long', 'unsigned int'):
+            text = text.replace(f'hipcub::WarpMergeSort<{scalar}, kSamplerItemsPerThread>',
+                                f'hipcub::WarpMergeSort<{scalar}, kSamplerItemsPerThread, 32>')
+    if source.name == 'ggml_bridge.cu':
+        text = text.replace('facts[device].cc                     = 100 * properties.major + 10 * properties.minor;',
+                            '''const std::string arch = properties.gcnArchName;
+        if (!arch.starts_with("gfx1201")) { throw std::invalid_argument("gguf HIP: expected gfx1201"); }
+        facts[device].cc = GGML_CUDA_CC_OFFSET_AMD + 0x1201;''')
+        text = text.replace('properties.sharedMemPerBlockOptin', 'properties.sharedMemPerBlock')
+    if str(relative).replace('\\', '/') == 'src/ops/common/math.cuh':
+        for half in ('low', 'high'):
+            text = text.replace(f'__half(__{half}2bfloat16(source))',
+                                f'__float2half_rn(__bfloat162float(__{half}2bfloat16(source)))')
+        text = re.sub(r'__device__ __forceinline__ float exp2_approx\(float x\) \{.*?\n\}',
+                      '__device__ __forceinline__ float exp2_approx(float x) { return exp2f(x); }', text, flags=re.S)
+        text = re.sub(r'__device__ __forceinline__ float log2_approx\(float x\) \{.*?\n\}',
+                      '__device__ __forceinline__ float log2_approx(float x) { return log2f(x); }', text, flags=re.S)
+        text = re.sub(r'__device__ __forceinline__ std::uint32_t pack_bf16x2\(float lo, float hi\) \{.*?\n\}',
+                      '''__device__ __forceinline__ std::uint32_t pack_bf16x2(float lo, float hi) {
+    return static_cast<std::uint32_t>(__builtin_bit_cast(unsigned short, __float2bfloat16(lo))) |
+           (static_cast<std::uint32_t>(__builtin_bit_cast(unsigned short, __float2bfloat16(hi))) << 16);
+}''', text, flags=re.S)
     if source.name == 'decode_graph.cpp':
         text = text.replace('hipGraphInstantiate(&exec, definition.graph_, 0)',
                             'hipGraphInstantiateWithFlags(&exec, definition.graph_, 0)')
@@ -95,10 +137,13 @@ private:
 '''
     write(relative, text)
 
-for filename in ('hip_vmm_address.h', 'hip_profiler.cpp'):
+for filename in ('hip_vmm_address.h', 'hip_profiler.cpp', 'hip_intrinsics.h', 'pdl.cuh'):
     write(Path('src/core') / filename, (port / 'core' / filename).read_text(encoding='utf-8'))
+for filename in ('memory.cuh', 'ldmatrix.cuh', 'mma.cuh'):
+    write(Path('src/ops/common') / filename, (port / 'ops' / filename).read_text(encoding='utf-8'))
+write('src/ops/common/mma_bf16_gfx12.h', (port / 'gfx12-mma/mma_bf16_gfx12.h').read_text(encoding='utf-8'))
 write('HIPIFY-LICENSE.txt', table[:table.index('# IMPORTANT:')])
 write('generation.json', json.dumps({'sdk_hipify_sha256': hashlib.sha256(hipify.read_bytes()).hexdigest(),
                                     'mapping_count': len(pairs), 'engine': str(engine),
-                                    'scope': 'Core and original tests, not Engine or production Ops'}, indent=2))
-print(f'Generated native HIP Core from {engine}')
+                                    'scope': 'Core, source API translation and explicit HIP primitive overrides; production routes require their own qualification'}, indent=2))
+print(f'Generated native HIP source view from {engine}')

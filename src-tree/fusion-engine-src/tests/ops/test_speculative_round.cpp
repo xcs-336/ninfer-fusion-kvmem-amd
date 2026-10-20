@@ -1930,8 +1930,10 @@ int main(int argc, char** argv) {
         return failures == 0 ? 0 : 1;
     }
     if (argc == 2 && std::string_view(argv[1]) == "--ngram-only") {
+        std::cout << "speculative_round: ngram transforms" << std::endl;
         int failures = transforms_conformance();
         for (const int k : {1, 5, 15, 16, 31}) {
+            std::cout << "speculative_round: ngram K=" << k << std::endl;
             SparseAcceptSuite suite(k, 1);
             failures += suite.generated_general_case(false, true);
             failures += suite.repeated_history_case(false);
@@ -1996,6 +1998,7 @@ int main(int argc, char** argv) {
                      "distribution|--ngram-negative-penalties|--wide-accept|--wide-distribution]\n";
         return 2;
     }
+    std::cout << "speculative_round: transforms" << std::endl;
     int failures = transforms_conformance();
     if (argc == 2) {
         std::cout << (failures == 0 ? "PASS" : "FAIL") << " speculative transforms\n";
@@ -2021,6 +2024,7 @@ int main(int argc, char** argv) {
         std::cerr << "speculative accept workspace accepted an invalid draft interval\n";
         ++failures;
     } catch (const std::invalid_argument&) {}
+    std::cout << "speculative_round: dense greedy and penalties" << std::endl;
     failures += greedy_accept_case(1, 0);
     failures += greedy_accept_case(5, 2);
     failures += greedy_accept_case(5, 5);
@@ -2037,6 +2041,7 @@ int main(int argc, char** argv) {
         failures += greedy_penalty_non_finite_case(257, poison);
     }
     for (int domain : {64, 257, 248077}) {
+        std::cout << "speculative_round: masked drafts domain=" << domain << std::endl;
         for (bool stochastic : {false, true}) {
             for (int rejection : {0, 2, 5}) {
                 failures += masked_greedy_drafts_case(5, domain, stochastic, rejection);
@@ -2048,10 +2053,12 @@ int main(int argc, char** argv) {
             failures += SparseAcceptSuite(k, batch).generated_general_case(true);
         }
     }
+    std::cout << "speculative_round: sampling" << std::endl;
     failures += deterministic_sampling_case();
     failures += batched_sampling_workspace_stride_case();
     std::size_t sparse_peak = 0;
     for (int k = 1; k <= 31; ++k) {
+        std::cout << "speculative_round: sparse K=" << k << std::endl;
         for (int batch = 1; batch <= 8; ++batch) {
             SparseAcceptSuite suite(k, batch);
             failures += suite.sparse_greedy_direct_case();
@@ -2079,6 +2086,7 @@ int main(int argc, char** argv) {
         } catch (const std::invalid_argument&) {}
     }
     for (int k : {1, 7, 15, 16, 31}) {
+        std::cout << "speculative_round: mixed/history K=" << k << std::endl;
         SparseAcceptSuite suite(k, 8);
         failures += suite.sparse_general_mixed_case();
         failures += suite.sparse_greedy_direct_case(0, true);
@@ -2090,6 +2098,7 @@ int main(int argc, char** argv) {
     // group-finalize kernel -- and each batch mixes poisoned with clean rows, so a blanket refusal
     // fails just as loudly as no refusal at all.
     for (int k : {1, 7, 15}) {
+        std::cout << "speculative_round: non-finite K=" << k << std::endl;
         for (int batch : {1, 8}) {
             for (bool raw : {true, false}) {
                 for (int poison = 0; poison < 2; ++poison) {
