@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "FIXTURE_DEFINITIONS; execution receipts are recorded separately",
+  "resource_directory_example": "D:/programfile/work/deepseek/artifacts/ninfer-amd/bonsai2-resources",
+  "common_args": ["--thinking", "off", "--max-context", "8192"],
+  "fixtures": [
+    {"name": "en_native_smoke", "messages": "frontend_export_fixture_en.json", "expected_exit": 0, "purpose": "Same text and explicit thinking=false as the existing native smoke; compare actual prepared IDs, not a re-tokenized string."},
+    {"name": "zh_system_user", "messages": "frontend_export_fixture_zh.json", "expected_exit": 0, "purpose": "Chinese messages and an actual system role."},
+    {"name": "unicode_and_controls", "messages": "frontend_export_fixture_unicode.json", "expected_exit": 0, "purpose": "Composed/decomposed NFC, astral/ZWJ characters, multipart text, Arabic, NUL, CRLF, TAB, quote and backslash."},
+    {"name": "literal_control_strings", "messages": "frontend_export_fixture_literal_controls.json", "expected_exit": 0, "purpose": "Literal strings resembling message, EOS, thinking, tool-call and FIM controls; retain production literal_spans."},
+    {"name": "multiturn", "messages": "frontend_export_fixture_multiturn.json", "expected_exit": 0, "purpose": "Object-form product messages, multiple turns and literal control text in the final user turn."},
+    {"name": "reject_declared_tools", "messages": "frontend_export_fixture_reject_tools.json", "expected_exit": 1, "purpose": "Explicit unsupported-mode rejection before Frontend::prepare; never emit a success JSON."},
+    {"name": "reject_media_before_acquisition", "messages": "frontend_export_fixture_reject_media.json", "expected_exit": 1, "purpose": "Unchanged product parser with vision=false rejects before acquiring the example.invalid URL."}
+  ],
+  "additional_runs_after_build": [
+    {"fixture": "en_native_smoke", "extra_args": ["--thinking", "on"], "note": "Replace the common --thinking off pair rather than supplying it twice; duplicate single options are rejected."},
+    {"fixture": "en_native_smoke", "extra_args": ["--thinking", "default"], "note": "Leave the actual template option unset; record null in prompt_options.enable_thinking."},
+    {"fixture": "en_native_smoke", "extra_args": ["--stop-token-id", "248063", "--stop-token-id", "248064", "--stop-token-id", "248065", "--stop-token-id", "248046"], "note": "Production merge/dedup: model default IDs plus the three extra Prism EOG IDs, with a deliberately repeated default."},
+    {"fixture": "en_native_smoke", "extra_args": ["--stop-token-id", "248077"], "expected_exit": 1, "note": "Bonsai first padded physical row is not a valid public stop token."}
+  ]
+}

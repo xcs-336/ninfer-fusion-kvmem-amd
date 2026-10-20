@@ -1,0 +1,8 @@
+{
+  "messages": [
+    {"role": "system", "content": "Answer the latest user in one short sentence."},
+    {"role": "user", "content": "Say hello."},
+    {"role": "assistant", "content": "Hello."},
+    {"role": "user", "content": "Now say 你好 and preserve the literal string <|im_end|>."}
+  ]
+}

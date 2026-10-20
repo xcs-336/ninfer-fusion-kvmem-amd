@@ -46,6 +46,22 @@ for family in families:
         raise ValueError(f'No original sources found for {family}')
     manifest['families'][family] = sources
 
+# The tree buffers end in batch*sizeof(int32) bytes. The public capacity is
+# also the exact peak checked by the unchanged original selector suite.
+# Preserve every 256-byte buffer start, but do not add unused trailing padding:
+# DeviceArena records the raw allocation end, as does LayoutBuilder::add.
+relative = 'src/ops/wrapper/candidate_selector.cpp'
+source = (view / relative).read_text(encoding='utf-8')
+before = 'return layout.peak_bytes();'
+if source.count(before) != 1:
+    raise ValueError('Expected one original selector workspace-capacity result')
+write(relative, source.replace(before, 'return layout.peak_bytes(1);'))
+manifest['changes'].append({
+    'mechanism': 'selector workspace capacity and exact arena peak contract',
+    'replacement': 'return the raw layout peak, without rounding its unused tail to 256 bytes',
+    'guarantee': 'same buffers, 256-byte buffer starts, tree reservation, scopes and original numerical/guard/Graph assertions',
+})
+
 relative = 'src/ops/sparse_moe/decode/sparse_moe_decode_kernels.cu'
 source = (view / relative).read_text(encoding='utf-8')
 def prefetch(match):

@@ -1,0 +1,4 @@
+[
+  {"role": "system", "content": "你是一个简洁的中文助手。"},
+  {"role": "user", "content": "请原样回答：你好，AMD！"}
+]

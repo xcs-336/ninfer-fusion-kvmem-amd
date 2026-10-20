@@ -1,0 +1,4 @@
+{
+  "tools": [{"type": "function", "function": {"name": "example", "parameters": {"type": "object", "properties": {}}}}],
+  "messages": [{"role": "user", "content": "This declared-tool mode must be rejected by the bounded research exporter."}]
+}

@@ -1,0 +1,3 @@
+[
+  {"role": "user", "content": [{"type": "image_url", "image_url": {"url": "https://example.invalid/never-acquire.png"}}]}
+]

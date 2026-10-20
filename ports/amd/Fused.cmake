@@ -127,9 +127,10 @@ foreach(_family linear_add linear_swiglu linear_pair)
   endforeach()
 endforeach()
 
-foreach(_test gdn_input_proj gdn_input_proj_conv_record gdn_input_proj_conv_snapshot
-  gdn_gating_proj attn_input_proj attn_input_proj_fused_rmsnorm linear_topk rmsnorm_rope)
+foreach(_test gdn_input_proj gdn_input_small_t gdn_input_proj_conv_record gdn_input_proj_conv_snapshot
+  gdn_gating_proj attn_input_proj attn_input_small_t attn_input_proj_fused_rmsnorm linear_topk rmsnorm_rope)
   string(REGEX REPLACE "_conv_(record|snapshot)$|_fused_rmsnorm$" "" _family "${_test}")
+  string(REGEX REPLACE "_input_small_t$" "_input_proj" _family "${_family}")
   if(NOT TARGET ninfer_${_family}_ops_amd)
     continue()
   endif()

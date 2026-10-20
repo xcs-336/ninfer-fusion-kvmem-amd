@@ -112,6 +112,14 @@ option(NINFER_AMD_PRODUCTS "Build the original CLI, server, calibration, perplex
 if(NINFER_AMD_PRODUCTS)
   include("${CMAKE_CURRENT_LIST_DIR}/Products.cmake")
 endif()
+option(NINFER_AMD_ALIGNMENT_TOOLS "Build optional native prompt/token scoring research tools" OFF)
+if(NINFER_AMD_ALIGNMENT_TOOLS)
+  if(NOT NINFER_AMD_PRODUCTS)
+    message(FATAL_ERROR "Alignment tools require the actual Engine and product prompt-input dependencies")
+  endif()
+  include("${CMAKE_CURRENT_LIST_DIR}/engine/AlignmentTools.cmake")
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/OriginalOps.cmake")
 # Publish the fully adapted source view once. Configuring an unchanged family
 # must not change timestamps and trigger expensive device-code recompilation.
 execute_process(COMMAND "${NINFER_PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/sync_source_view.py"

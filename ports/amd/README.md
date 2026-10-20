@@ -12,6 +12,17 @@ Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 并验证�
 默认完整 Attention 均通过，其他独立注册模式仍须分别验证。
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
+原始 Ops 测试已逐项接回：160 项注册中，159 项有原生目标/参数/环境映射；
+另 1 项 NVIDIA TMA 专用 staging race 当前不受支持。现有 76 项原始注册实际通过，
+另 4 个 Attention 入口可由相同函数和参数的默认测试证明覆盖，不能记作独立执行通过。
+PackGQA、GDN FP16 state two-stage、E8 全码对及两套投影 small-T 原测试均已实际通过。
+路线表变体仍分别记录，默认通过不会外推为所有候选或 `legacy`/`unified` 均通过。
+完整词表转码要求至少 5.5 GiB 可用 RAM，目前因准入不足未运行；没有缩小词表或删除 Q4/Q6 测试域。
+
+候选选择器原完整测试曾只在 workspace scope/peak 断言失败：末尾 `I32[B]` 的实际高水位
+与容量函数额外舍入到 256 字节不一致。适配层现返回 `peak_bytes(1)`，保留每个缓冲区的
+256 字节起点对齐、全部数学/保护区/Graph 断言；修复后完整原测试实际通过。
+
 ## 已验证的硬件结果
 
 2026-10-20，Windows 11 / RX 9070 gfx1201 wave32，显卡驱动 32.0.31041.1004，
@@ -62,8 +73,9 @@ public Engine、文本、媒体、模型 loading/runtime 和原测试清单，�
 197 个原融合生产编译单元及八个对应静态库已实际完成 O3 编译与归档。
 这轮构建曾在原 TopK 测试的 Graph API 签名适配处停止；类型安全适配修复后，Core Graph
 原测试及 TopK 完整数值/Graph 套件已通过，Pair 分组边界探针也通过。
-剩余 28 个融合/辅助原测试程序现已全部链接；原 Q4 A16 LinearAdd 完整数学测试通过，
-其他 63 项注册与独立 KVMem 资格仍待运行。combined GGUF 原测试补链接实际 SDK compiler-rt 后，
+首批 28 个融合/辅助原测试程序现已全部链接；原 Q4/Q5/Q8 A16 及 NVFP4 LinearAdd、
+Q5 small-T、Q8 LinearSwiGLU/LinearPair、GDN/Attention input 默认套件与部分辅助原测试已通过，独立 KVMem 探针也通过；
+其余注册继续按参数和环境分别验收。combined GGUF 原测试补链接实际 SDK compiler-rt 后，
 已完成真实链接与全套数学验证，原 oracle 未改。
 原有超过 64 KiB LDS 的四处统一调度已通过实际编译，容量断言与数学 oracle 保留。
 `NINFER_AMD_PRODUCTS=ON` 现可接入原 CLI、serve、calibrate、perplexity 和推理 benchmark；
@@ -73,6 +85,25 @@ public Engine、文本、媒体、模型 loading/runtime 和原测试清单，�
 合约也通过。CPU 专家保留原计算体，以函数局部 ISA 与 CPUID/OS 状态检查选择标量、
 AVX2 和 AVXVNNI。本机三条已准入路径均通过独立整数编码/行计算与稀疏 FP64 forward
 验证；该验证已作为 host-only CTest 接入，不给整个二进制强加 AVX ISA。
+
+完整原 Ops 清单另有 87 个程序、160 项注册。覆盖审查补接了之前遗漏的两项 SmallTMma、
+E8 root decode、词表转码和 CPU route coverage 原程序，以及 62 项此前只有外部队列或尚未
+注册的原运行模式；参数、环境和时限保留。这些补接已配置，尚未完成新程序构建与逐模式
+资格验证。NVIDIA TMA 专用 staging-race 测试单独标记为本卡原生机制不适用；不能把别的
+AMD 路由运行成功说成该 TMA 机制通过。
+
+可选 `NINFER_AMD_ALIGNMENT_TOOLS=ON`（同时启用 Engine 和 Products）接入两个研究工具。
+`ninfer_amd_frontend_export` 复用真实生产 frontend，导出完整渲染文本与实际准备 token；
+已构建并通过11项实际前端夹具，包括中英文、Unicode/控制字节、字面控制串、多轮、
+thinking模式、stop去重及工具/媒体/词表补齐行的拒绝。
+`ninfer_amd_score_tokens` 通过公开 CausalScoring API 导出指定 ID 序列的逐位置自然 logprob；
+已构建并通过17项实际help/解析/默认计划检查，默认不构造Engine，显式 `--run` 才加载模型。
+共28项检查串行持锁通过，最低可用RAM4.151GiB；回执在工作区
+`research/ninfer-frontend-fixtures-native-first/receipt.json`。随后实际评分了完整23个输入IDs
+中位置19–22的四个指定目标（含EOS）：BF16 KV/context512、FP32 state、A16、profile off，
+exit0且资源检查通过，host guard最低3.382GiB。结果保存在
+`research/ninfer-native-score-first/`；这只证明该小型评分路径实际执行，尚无配对品质或速度结论。
+这两个工具用于相同输入和公共评分词域的对齐，不提供端到端优势结论。
 
 原 artifact reader、admission、context cost、resource manager 和 prefix-cache index 的
 五套 CPU 测试均已在实际 CMake/O3 构建中通过。修正了原 resource-manager 测试夹具缺失的

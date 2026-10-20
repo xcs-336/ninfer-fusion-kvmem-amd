@@ -229,8 +229,8 @@ def main() -> None:
                  if p.is_file() and p.suffix in (".h", ".cuh", ".cpp", ".cu")]
         wrapper = source / "src/ops/wrapper" / f"{family}.cpp"
         if wrapper.is_file(): paths.append(wrapper)
-        flat_tests = {"gdn_input_proj": ("gdn_input_proj", "gdn_input_proj_conv_record", "gdn_input_proj_conv_snapshot", "gdn_replay_fold"),
-                      "attn_input_proj": ("attn_input_proj", "attn_input_proj_fused_rmsnorm"),
+        flat_tests = {"gdn_input_proj": ("gdn_input_proj", "gdn_input_small_t", "gdn_input_proj_conv_record", "gdn_input_proj_conv_snapshot", "gdn_replay_fold"),
+                      "attn_input_proj": ("attn_input_proj", "attn_input_small_t", "attn_input_proj_fused_rmsnorm"),
                       "gdn_gating_proj": ("gdn_gating_proj",), "rmsnorm_rope": ("rmsnorm_rope",),
                       "linear_topk": ("linear_topk",)}
         for test in flat_tests.get(family, ()):
@@ -238,6 +238,11 @@ def main() -> None:
             test_path = source / "tests/ops" / f"test_{test}.{extension}"
             if not test_path.is_file(): raise ValueError(f"missing original fusion test: {test_path}")
             paths.append(test_path)
+        if family in ("gdn_input_proj", "attn_input_proj"):
+            # Both original tests directly call SmallTMma rather than relying
+            # on the default plan to happen to select it. Preserve their full
+            # element-by-element FP64 oracle, independently of route tables.
+            paths.append(source / "tests/ops/small_t_oracle.h")
         for path in sorted(set(paths)):
             relative = path.relative_to(source).as_posix()
             text = path.read_text(encoding="utf-8")
