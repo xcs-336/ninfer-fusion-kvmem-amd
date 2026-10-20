@@ -1,5 +1,10 @@
 # NInfer Fusion KVMem
 
+> **AMD 迁移开发版（2026-10-20）**：本 fork 面向 Windows / AMD RX 9070，适配入口见
+> [ports/amd](ports/amd/README.md)。原生 BF16 MMA 已通过实机测试，优化基线 Core 已能编译；
+> VMM 借用隔离仍有失败，完整 Engine 尚未跑通。下文保留的是上游 NVIDIA 功能与性能说明，
+> 不能作为本 fork 的 AMD 支持或性能承诺。
+
 **面向 Windows / NVIDIA GPU 的长上下文推理实验：以 KVMem 环为主线，融合流式（streaming）的「缺页可拉回、容量不够就按账让位」，让设备 KV 池可以小于逻辑上下文；配主机 KV 存储、按需检索与分段注入网关，多轮仍能复用上下文，超出池的题面走分片而不是静默错。**
 
 本项目基于 NInfer `0.11.0` 线（KVMem 融合线；2026-10-19 的 sm86 / sm89 / sm120a 三份引擎由同一份源码各自编译），发布融合后的源码、复现记录和验证工具。它是 NInfer 的**下游衍生项目**；基座与第三方算法来源见 [署名与改动声明](NOTICE.md)。
