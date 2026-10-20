@@ -376,6 +376,9 @@ int run_case(const FoldProfile profile, std::int32_t width, std::int32_t rows,
         DeviceBuffer original(state_bytes);
         cuda_check(cudaMemcpy(original.p, state_base, state_bytes, cudaMemcpyDeviceToDevice),
                    "save graph initial state");
+        // The snapshot must finish before the nonblocking context stream can
+        // read it and overwrite the same state on its first graph replay.
+        cuda_check(cudaStreamSynchronize(nullptr), "finish graph initial state snapshot");
         DeviceContext context;
         DecodeGraphDefinition definition;
         DecodeGraphExecutable graph;

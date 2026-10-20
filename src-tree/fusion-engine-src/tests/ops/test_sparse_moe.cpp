@@ -857,6 +857,9 @@ public:
         WorkspaceArena workspace(workspace_bytes);
 
         if (graph_replay) {
+            // A D2D copy can return before its default-stream work completes.
+            // The nonblocking replay stream must not race the initial seed.
+            cuda_check(cudaStreamSynchronize(nullptr), "finish SparseMoe default-stream seed");
             cudaStream_t stream  = nullptr;
             cudaGraph_t graph    = nullptr;
             cudaGraphExec_t exec = nullptr;

@@ -5,7 +5,8 @@
 
 当前是适配开发分支。实际 public `.ninfer` Engine 与五个原产品已完成 AMD 构建，
 Bonsai BF16 KV 的非推测和 MTP2 首次短推理均通过。两次均输出 `AMD native.`，
-生成 token ID 相同；这只是四 token、Graph 关闭的冒烟结果，尚无端到端性能优势结论。
+生成 token ID 相同。独立观测消费者随后也验证了两种模式的实际 HIP Graph 捕获、实例化
+和推理阶段回放，`generation.wait()` 完成且仍生成相同四个 token；尚无端到端性能优势结论。
 Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 并验证；
 其他矩阵片段、四套 GDN、权重恢复/Graph、十一套完整 public Linear 原测试已通过。
 完整 Attention 首次测试暴露 NVFP4 解码和 LDS 容量问题；局部修复后原 NVFP4 专项及
@@ -13,8 +14,14 @@ Dot 提供的原生 gfx1201 BF16 MMA 已接入原有生产 BF16 GEMM 并验证�
 旧 `ninfer-all` HIP 实验的核心测试不能视作本基线的测试结果。
 
 原始 Ops 测试已逐项接回：160 项注册中，159 项有原生目标/参数/环境映射；
-另 1 项 NVIDIA TMA 专用 staging race 当前不受支持。现有 76 项原始注册实际通过，
+另 1 项 NVIDIA TMA 专用 staging race 当前不受支持。现有 107 项原始注册实际通过，
 另 4 个 Attention 入口可由相同函数和参数的默认测试证明覆盖，不能记作独立执行通过。
+SparseMoE 与 GDN replay-fold 曾在 Graph 用例失败：默认流 D2D 初始化复制缺少完成依赖，
+非阻塞 Graph 流可能提前读取或覆盖状态。两项夹具各增加一次检查返回值的完成屏障后，
+完整原始注册均已实际通过；原算子、形状、容差、断言和回放次数不变，旧失败日志保留。
+SparseMoE wide 及卷积 snapshot/record 的 legacy/unified 四个注册也已分别实际通过。
+剩余 48 项尚未运行，
+本轮因独占窗口结束而未启动，不计为失败或通过。
 PackGQA、GDN FP16 state two-stage、E8 全码对及两套投影 small-T 原测试均已实际通过。
 路线表变体仍分别记录，默认通过不会外推为所有候选或 `legacy`/`unified` 均通过。
 完整词表转码要求至少 5.5 GiB 可用 RAM，目前因准入不足未运行；没有缩小词表或删除 Q4/Q6 测试域。
@@ -215,7 +222,7 @@ GDN 原有 `m16n8k8` 片段接口现用 wave32 shuffle 和原生 FP32 FMA 计算
 4 个原有数值测试已通过，包括 WY/recurrent、two-stage、FP16 状态和 replay-record。
 保留了原始 FP64 oracle、长序列、状态连续性和误差判据；其中 two-stage 覆盖 T=16,385。
 `test_gdn_replay_fold` 所依赖的融合输入投影库现已编译，原完整 replay-fold
-测试也已接入目标图，仍待运行，不能计作通过。
+测试已接入目标图并实际通过；独立 wide 注册仍待单独执行。
 仅在 GDN 的 `FoldAccess` 上将 NVIDIA `__grid_constant__` 优化限定符改为 HIP const 值参数；
 其方法不跨线程发布参数地址。其他 TMA 描述符未作同样转换。
 
