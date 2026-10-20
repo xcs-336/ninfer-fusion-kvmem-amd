@@ -5,6 +5,7 @@
 #include "nlohmann/json.hpp"
 
 #include <charconv>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -16,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -26,6 +28,8 @@ namespace fs = std::filesystem;
 struct Options {
     bool run = false;
     bool help = false;
+    bool prefill_a8 = false;
+    std::uint32_t resource_hold_ms = 0;
     fs::path artifact, tokens, output;
     std::uint32_t first_target = 0;
     std::uint32_t context = 512;
@@ -41,7 +45,8 @@ constexpr std::string_view Usage =
     "       --first-target N --output SCORES.json [--context N] [--device N]\n"
     "       [--kv-dtype bf16|int8|fp8|rk8v4|rk4v4|rk4v4-e8|rk2v4-e8|nvfp4|k8v4]\n"
     "       [--comparison-id LABEL] [--model-id LABEL] [--weights-id LABEL]\n"
-    "       [--tokenizer-id LABEL] [--engine-label LABEL] [--run]\n"
+    "       [--tokenizer-id LABEL] [--engine-label LABEL] [--prefill-a8] [--run]\n"
+    "       [--resource-hold-ms 0..10000] (quality resource observation only)\n"
     "       Defaults: context512, bf16 KV, device0, plan-only.\n"
     "\nIDS.json must be one JSON array of nonnegative int32 token IDs, with at\n"
     "least two IDs and at most --context IDs. first-target is a zero-based\n"
@@ -50,8 +55,10 @@ constexpr std::string_view Usage =
     "Default: input/paths plan only, no Engine, no result file. --run must be\n"
     "launched under the external GPU lock and memory guard. Scores are natural\n"
     "log p(T[i]|T[0..i)), with fresh State/KV and the public-token normalizer.\n"
-    "FP32 GDN state, A16 activations, native RoPE, no spec/graphs/cache/weight\n"
-    "transcoding and device-profile off are fixed. Identity labels are declared\n"
+    "FP32 GDN state, native RoPE, no spec/graphs/cache/weight transcoding and\n"
+    "device-profile off are fixed. A16 is the default; --prefill-a8 permits\n"
+    "eligible integer activation routes and changes the quality profile. This\n"
+    "permission is not an observed integer-kernel witness. Identity labels are declared\n"
     "comparison metadata; artifact identity and SHA256 belong in the sidecar.\n";
 
 std::uint32_t unsigned_argument(std::string_view text, std::string_view label) {
@@ -87,10 +94,12 @@ Options parse_options(int argc, char** argv) {
         }
         if (flag == "--help") { options.help = true; continue; }
         if (flag == "--run") { options.run = true; continue; }
+        if (flag == "--prefill-a8") { options.prefill_a8 = true; continue; }
         if (flag != "--artifact" && flag != "--tokens" && flag != "--output" &&
             flag != "--first-target" && flag != "--context" && flag != "--device" &&
             flag != "--kv-dtype" && flag != "--comparison-id" && flag != "--model-id" &&
-            flag != "--weights-id" && flag != "--tokenizer-id" && flag != "--engine-label") {
+            flag != "--weights-id" && flag != "--tokenizer-id" && flag != "--engine-label" &&
+            flag != "--resource-hold-ms") {
             throw std::invalid_argument("unknown option: " + std::string(flag));
         }
         if (++i == argc) throw std::invalid_argument("missing value for " + std::string(flag));
@@ -101,6 +110,11 @@ Options parse_options(int argc, char** argv) {
         else if (flag == "--output") options.output = fs::u8path(value);
         else if (flag == "--first-target") options.first_target = unsigned_argument(value, flag);
         else if (flag == "--context") options.context = unsigned_argument(value, flag);
+        else if (flag == "--resource-hold-ms") {
+            options.resource_hold_ms = unsigned_argument(value, flag);
+            if (options.resource_hold_ms > 10000)
+                throw std::invalid_argument("--resource-hold-ms exceeds 10000");
+        }
         else if (flag == "--device") {
             const auto device = unsigned_argument(value, flag);
             if (device > static_cast<unsigned>(std::numeric_limits<int>::max()))
@@ -185,7 +199,7 @@ ninfer::EngineOptions engine_options(const Options& options) {
     result.gdn_state_fp16 = false;
     result.gdn_state_storage = ninfer::GdnStateStorage::FP32;
     result.mlp_a8_decode = false;
-    result.prefill_a8 = false;
+    result.prefill_a8 = options.prefill_a8;
     result.prefill_cublas = false;
     result.prefill_cublas_projections = false;
     result.fast_prefill_kernel = false;
@@ -210,7 +224,8 @@ Json execution_json(const ninfer::EngineOptions& options, std::string_view kv_na
             {"kv_capacity_mode", "explicit"},
             {"kv_capacity_tokens", options.kv_capacity.explicit_tokens},
             {"prefill_chunk", options.prefill_chunk}, {"gdn_state", "fp32"},
-            {"activation_policy", "A16"}, {"prefill_a8", options.prefill_a8},
+            {"activation_policy", options.prefill_a8 ? "REQUESTED_ALLOW_A8_INT" : "A16"},
+            {"prefill_a8", options.prefill_a8}, {"actual_integer_route_witnessed", false},
             {"mlp_a8_decode", options.mlp_a8_decode},
             {"prefill_cublas", options.prefill_cublas},
             {"prefill_cublas_projections", options.prefill_cublas_projections},
@@ -231,7 +246,8 @@ void verify_effective_options(const Options& requested, const ninfer::EngineOpti
         actual.kv_cache != requested.kv || actual.kv_capacity.mode != ninfer::KvCapacityMode::Explicit ||
         actual.kv_capacity.explicit_tokens != requested.context || actual.prefill_chunk != 1024 ||
         actual.max_concurrency != 1 || actual.max_pending_requests != 1 || actual.gdn_state_fp16 ||
-        actual.gdn_state_storage != ninfer::GdnStateStorage::FP32 || actual.prefill_a8 ||
+        actual.gdn_state_storage != ninfer::GdnStateStorage::FP32 ||
+        actual.prefill_a8 != requested.prefill_a8 ||
         actual.mlp_a8_decode || actual.prefill_cublas || actual.prefill_cublas_projections ||
         actual.fast_prefill_kernel || actual.lm_head_q4 || actual.lm_head_q6 ||
         actual.embedding_q4 || actual.embedding_q6 || actual.mtp_experts_q4 ||
@@ -285,6 +301,7 @@ Json common_json(const Options& options, const std::vector<ninfer::TokenId>& tok
             {"input_ids_path", path_utf8(options.tokens)},
             {"artifact_path", path_utf8(options.artifact)},
             {"output_path", path_utf8(options.output)},
+            {"resource_observation_hold_ms_requested", options.resource_hold_ms},
             {"input_semantics", {{"retokenized", false}, {"implicit_special_tokens", false},
                                  {"stop_truncation", false}, {"window_truncation", false},
                                  {"fresh_state_and_kv", true},
@@ -387,6 +404,16 @@ int run(const Options& options) {
     result["scored_tokens"] = logprobs.size();
     result["total_nll"] = total_nll;
     result["mean_nll"] = total_nll / static_cast<double>(logprobs.size());
+    // Keep the real Engine alive for a slow external Windows counter reader.
+    // This explicit research-only wait is outside scoring, never a timing sample.
+    const auto hold_begin = std::chrono::steady_clock::now();
+    if (options.resource_hold_ms != 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(options.resource_hold_ms));
+    result["resource_observation"] = {
+        {"requested_hold_ms", options.resource_hold_ms},
+        {"actual_hold_ms", std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - hold_begin).count()},
+        {"engine_alive_during_hold", true}, {"performance_sample", false}};
     write_result(options.output, result);
     std::cerr << "teacher-forced scores computed: " << logprobs.size()
               << " natural-log values; no quality/performance qualification implied\n";

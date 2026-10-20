@@ -1,5 +1,13 @@
 # Teacher-forced token score export
 
+The explicit `--prefill-a8` extension and bounded resource-observation hold have
+now been host-built and executed in twelve resource-qualified processes: A16/A8
+on fixed4 and separately five cases with38 targets. See the immutable local
+`research/ninfer-a8-quality-six-case-qualified-summary.json`. This is bounded
+score evidence, not full model-quality or performance qualification. Existing
+receipts below qualify their original A16 protocol snapshots only; no
+calibration grant is implied.
+
 `score_tokens.cpp` is a research consumer of the unchanged public Engine. The
 implementation has compiled and linked on Windows / gfx1201. All17 actual native
 help/strict-parser/default-plan checks passed in the guarded28-case receipt
@@ -42,13 +50,41 @@ The output path and its `.partial` sibling must both be new. Only a complete,
 validated result is renamed to the final path; errors return nonzero and produce
 an error JSON on stderr.
 
-The fixed execution profile is CausalScoring, FP32 GDN state, A16 activations,
+The default execution profile is CausalScoring, FP32 GDN state, A16 activations,
 no speculative backend, no CUDA Graph, no prefix cache, no Vision, no load-time
 head/embedding/expert transcoding, native RoPE, and device-profile `off`. KV and
 device/context remain explicit choices, with defaults bf16/device0/context512.
 The original Engine normalizes prefill_chunk to1024, max_concurrency to1,
 max_pending_requests to1 and explicit KV capacity to max_context; the tool
 verifies the effective options before scoring and records them.
+
+`--prefill-a8` is an explicit opt-in to the existing Engine permission for
+eligible integer activation routes. It changes only `EngineOptions.prefill_a8`;
+`mlp_a8_decode`, weight transcoding and every other fixed setting above remain
+disabled. The name also affects eligible policy selection during causal scoring,
+so it must not be interpreted as permission limited to a generation prefill.
+Both plan and execution JSON record the real options: `prefill_a8:true` and
+`activation_policy:"REQUESTED_ALLOW_A8_INT"` for this arm, versus the existing
+`false` / `"A16"` defaults. Effective options must equal the requested permission
+before the scoring call. `actual_integer_route_witnessed:false` explicitly keeps
+policy permission separate from per-call kernel evidence. A separate generation
+Graph inventory does not prove which kernels this CausalScoring call used.
+
+The independent `research/run-ninfer-native-a8-score.py` runs fresh A16 and A8
+processes on identical complete IDs/target positions. Its differences describe
+this activation quantization trade only; they do not merge previous Prism
+quality results, apply a quality threshold or publish a calibration grant.
+
+`--resource-hold-ms 0..10000` is a separate research observation option,
+default0. After scores/aggregates have been computed and before the result is
+written, it keeps the same local Engine alive while the host sleeps for the
+requested interval. JSON records requested/actual hold milliseconds,
+`engine_alive_during_hold:true` and `performance_sample:false`. The A16/A8
+runner requests8000ms to allow the slow external Windows counter reader to
+observe the actual scorer PID's model residency. This is not another scoring
+call, a device delay, an overlap optimization or a performance sample. The hold
+does not establish the transient memory peak during scoring; the sampling
+scope remains explicit. Existing receipts without the hold remain unchanged.
 
 The original startup sink/ring guard also applies to CausalScoring: there is no
 purpose exception in `program/planning/startup.cpp:1056–1129`. With the default
