@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_ONLY_DEPENDENCY_PINS",
+  "source_sha256": {
+    "ports/amd/memory/models_engine/prepare_engine_storage_plan.py": "06ce56eee589ca1ad31144b98b64c5276ed9356361bd683673c59ed2c4340429",
+    "ports/amd/memory/models_engine/segmented_planner_checks.cpp.inc": "6179349598fe3061d9194a03bf1e34bd19fd4360c739370c0e5d00cf1b4a1cf7",
+    "ports/amd/memory/models_storage/prepare_models_storage.py": "96eff0dbee329b45aa52890d5f1e024c447e16dd7739ac9b6b858d35fe2bd85f",
+    "ports/amd/memory/models_storage/decoder_storage_impl.cpp.inc": "edc2bc84a73be166bf435f77116178c937f7c8cb845c40e67e03e8a7caef9acc",
+    "ports/amd/memory/controller_handoff/prepare_controller_handoff.py": "d5baedccd248fa7299cd5a1254ba106ddba4f793be28bc38137a54144e6d18c5",
+    "ports/amd/memory/controller_handoff/controller_handoff_types.h": "1418c5ce99478a850943640883f296a7e3c5b559692bfd01d5680d712c1627ed",
+    "ports/amd/memory/controller_handoff/controller_handoff_methods.cpp.inc": "e9437c3421b6a0f51192d7b854ae41875379bf9022722de277577841fbe8400a",
+    "ports/amd/memory/models_engine_ops/ModelsEngineOps.cmake": "49714434d51794af10ce57a0bde81855d7663df6ea61d900736b78bde1f6ddfa",
+    "ports/amd/memory/models_engine_ops/prepare_models_engine_ops.py": "dd13a937f3607a1221392cc2e1539af0ea2eae212255b79085c32116aed47180",
+    "ports/amd/memory/models_engine_ops/public_bf16.h": "c0d135e577b8b155f5ae468cf8374a33e5624b2dd5820e593683bd5771d3963b",
+    "ports/amd/memory/models_engine_ops/affine_guard.h": "9054c88b9c2e4adccd7bc075d08687bc4cb7ab9267e688a55930be63bac073e8",
+    "ports/amd/memory/models_engine_ops/bridge_models_calls.py": "5f9c76e15a3f90ec573990f9f3b5455525bff85490b6367ab90081683ea22a64",
+    "ports/amd/memory/models_engine_ops/test_models_engine_ops.cu": "290524bab7b82eb89950b8582d7884de5c52866275fceb6fd5504fe1b6e6af27",
+    "ports/amd/memory/models_engine_ops/verify_map.py": "3e4eec8d17d4652e99053a0bb62be012d77bff9f87e234ac04dea47ff4b37ea7",
+    "ports/amd/memory/models_engine_ops/external-pins.json": "bec9930f408341f6c5f8b13cf0d74b43bb99e80ecff4778b68ed0f82f764370c",
+    "ports/amd/memory/models_engine_ops/manifest.json": "c3656f31843c47d0fc6b6354d27b1033eff83aa3787409580decb0b8ce6549fa",
+    "ports/amd/memory/models_engine_ops/README.md": "7bf5d82ec97c75c83f773f5d6be2a1bbd57126bfec63c99b18ce8de9b570d132"
+  }
+}

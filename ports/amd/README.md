@@ -353,7 +353,13 @@ KV 的任意非连续空闲页拼成连续 workspace 仍需要可靠映射，不
 完整 Vision/Engine 生命周期还需集成验证。
 实验替代后端将语义 K/V 页映射到单一普通 HIP payload，以有界 D2D 搬移让出固定连续
 workspace，稳定设备页表供 Graph 内核在执行时寻址。原分配器与六组 BF16 消费者功能已
-通过；真实 Vision 借用方、工作线程交接与完整 Models 生命周期仍须接入验收，生产资格仍为 false。
+通过；工作线程交接和 Models 存储已有有限组件验收。真实 Vision Broker 的生产函数组件也已
+构建并通过物理功能测试；完整 Session / Engine 生命周期仍须接入验收，生产资格仍为 false。
+
+最新默认关闭候选的实现、实际功能证据和资源未合格边界见
+[非连续 KV 与 Vision 接入检查点](memory/SEGMENTED_STATUS.md)。
+两项新增组件原生退出0，但因进程短、资源样本0，守护runner明确返回125；不能据此宣称
+节省显存或提速。完整Engine增量构建触发既有RAM底线，最终链接和组合原生测试尚未完成。
 
 本机兼容修正：原候选的 `-mwavefrontsize32` 改为编译器支持的 `-mno-wavefrontsize64`；
 本机编译器没有 `__AMDGCN_WAVEFRONT_SIZE` 宏，改用设备 wavefront-size 检查，另保留

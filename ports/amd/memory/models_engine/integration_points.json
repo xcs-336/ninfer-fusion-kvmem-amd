@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "status": "OBSERVED_SOURCE_AND_PROPOSED_PATCH_POINTS_NOT_RUNTIME_IMPLEMENTED",
+  "native_root": "D:\\programfile\\work\\deepseek\\sources\\ninfer-fusion-kvmem\\ports\\amd\\build\\generated",
+  "observed_sources": {
+    "src/runtime/engine/model_instance.cpp": {
+      "sha256": "536676efee26fb5638308837479cf5a5e3c592613d4a93529d0b0be7071936ad",
+      "bytes": 46133,
+      "anchors": {
+        "ModelInstance::ModelInstance(": [
+          {
+            "line": 468,
+            "text": "ModelInstance::ModelInstance(std::unique_ptr<LoadedQwen3_5> stable_loaded,"
+          }
+        ],
+        ".program": [],
+        "create_program": [
+          {
+            "line": 474,
+            "text": "program(models::qwen3_5::create_program(loaded->parameters, std::move(sequence_plan), device,"
+          },
+          {
+            "line": 481,
+            "text": "// `Loaded` holds the frontend, `Instance` builds the Program from `create_program`."
+          },
+          {
+            "line": 495,
+            "text": "program(models::qwen3_8_flash_next::Package::create_program(*loaded->model,"
+          }
+        ],
+        "materialize_model(": [
+          {
+            "line": 519,
+            "text": "models::qwen3_5::materialize_model(std::move(plan), device, &options.startup_observer);"
+          }
+        ]
+      }
+    },
+    "src/runtime/engine/model_instance.h": {
+      "sha256": "66373cea71209b30503a1a78c4fd08aa5bb314e74758cad5a81d7be758d0d1a9",
+      "bytes": 5250,
+      "anchors": {
+        "struct ModelInstance {": [
+          {
+            "line": 51,
+            "text": "struct ModelInstance {"
+          }
+        ],
+        "struct FlashNextInstance {": [
+          {
+            "line": 82,
+            "text": "struct FlashNextInstance {"
+          }
+        ],
+        "std::unique_ptr<models::qwen3_5::Program> program;": [
+          {
+            "line": 57,
+            "text": "std::unique_ptr<models::qwen3_5::Program> program;"
+          }
+        ]
+      }
+    },
+    "src/runtime/engine/engine_core.h": {
+      "sha256": "c3b7bb1c088a686d50cd8f93f98d07f7ac765c383c43b419111636a5beb66b29",
+      "bytes": 131352,
+      "anchors": {
+        "std::promise<void> startup;": [
+          {
+            "line": 121,
+            "text": "std::promise<void> startup;"
+          }
+        ],
+        "device_.bind_to_current_thread();": [
+          {
+            "line": 125,
+            "text": "device_.bind_to_current_thread();"
+          }
+        ],
+        "startup.set_value();": [
+          {
+            "line": 126,
+            "text": "startup.set_value();"
+          }
+        ],
+        "worker_loop();": [
+          {
+            "line": 131,
+            "text": "worker_loop();"
+          }
+        ],
+        "~EngineCore() noexcept": [
+          {
+            "line": 141,
+            "text": "~EngineCore() noexcept {"
+          }
+        ],
+        "ProgramCleanup::Shutdown": [
+          {
+            "line": 2269,
+            "text": "leaked = cleanup == ProgramCleanup::Shutdown ? instance_.program->shutdown_cleanup()"
+          },
+          {
+            "line": 2298,
+            "text": "// call site (ProgramCleanup::Shutdown) stays quiet."
+          },
+          {
+            "line": 2299,
+            "text": "if (cleanup != ProgramCleanup::Shutdown) {"
+          },
+          {
+            "line": 2329,
+            "text": "if (cleanup != ProgramCleanup::Shutdown) {"
+          },
+          {
+            "line": 2378,
+            "text": "fail_all_locked(error, ProgramCleanup::Shutdown);"
+          }
+        ]
+      }
+    },
+    "src/runtime/engine/causal_score_core.h": {
+      "sha256": "aabb915d712391651817d0a7c87f119b4468b1212e60d5ed2b862fff0285bcba",
+      "bytes": 5703,
+      "anchors": {
+        "std::promise<void> startup;": [
+          {
+            "line": 30,
+            "text": "std::promise<void> startup;"
+          }
+        ],
+        "device_.bind_to_current_thread();": [
+          {
+            "line": 34,
+            "text": "device_.bind_to_current_thread();"
+          }
+        ],
+        "startup.set_value();": [
+          {
+            "line": 35,
+            "text": "startup.set_value();"
+          }
+        ],
+        "worker_loop();": [
+          {
+            "line": 40,
+            "text": "worker_loop();"
+          }
+        ],
+        "~CausalScoreCore() noexcept": [
+          {
+            "line": 50,
+            "text": "~CausalScoreCore() noexcept {"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/program.h": {
+      "sha256": "f7dc5a2df1c87509caacaf11e502e0b6f2a1f688024f0c1ff26eb90117216e80",
+      "bytes": 61985,
+      "anchors": {
+        "class Program {": [
+          {
+            "line": 1005,
+            "text": "class Program {"
+          }
+        ],
+        "explicit Program(std::unique_ptr<detail::ProgramImpl> impl) noexcept;": [
+          {
+            "line": 1180,
+            "text": "explicit Program(std::unique_ptr<detail::ProgramImpl> impl) noexcept;"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/program.cpp": {
+      "sha256": "e42742bbd86e76571c0c2967ea2291ff8880408dd4bf7fb6d90562cfc2665072",
+      "bytes": 32351,
+      "anchors": {
+        "std::unique_ptr<Program> create_program(": [
+          {
+            "line": 658,
+            "text": "std::unique_ptr<Program> create_program(const execution::Parameters& parameters,"
+          }
+        ],
+        "std::make_unique<detail::ProgramImpl>": [
+          {
+            "line": 666,
+            "text": "std::make_unique<detail::ProgramImpl>(parameters, *plan.impl_, device, startup_observer);"
+          }
+        ],
+        "MemorySummary Program::memory_summary()": [
+          {
+            "line": 614,
+            "text": "MemorySummary Program::memory_summary() const noexcept { return impl_->memory_summary(); }"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/program_impl.h": {
+      "sha256": "01c38ff6af466618be2109f150466081cf2d5b324764a8d04089d2e771cc73c0",
+      "bytes": 108320,
+      "anchors": {
+        "std::unique_ptr<EvictableKVPool> kv_arena;": [
+          {
+            "line": 801,
+            "text": "std::unique_ptr<EvictableKVPool> kv_arena;"
+          }
+        ],
+        "DeviceArena persistent;": [
+          {
+            "line": 802,
+            "text": "DeviceArena persistent;"
+          }
+        ],
+        "std::unique_ptr<qwen3_5::DecoderState> decoder;": [
+          {
+            "line": 812,
+            "text": "std::unique_ptr<qwen3_5::DecoderState> decoder;"
+          }
+        ],
+        "RankStreams compute_streams;": [
+          {
+            "line": 1121,
+            "text": "RankStreams compute_streams;"
+          }
+        ],
+        "RankStreams transfer_streams;": [
+          {
+            "line": 1122,
+            "text": "RankStreams transfer_streams;"
+          }
+        ],
+        "std::unique_ptr<HybridPrefixCache> hybrid_;": [
+          {
+            "line": 1218,
+            "text": "std::unique_ptr<HybridPrefixCache> hybrid_;"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/program_impl.cpp": {
+      "sha256": "aceaadb9f85ae7b762d88a9ece90d277f2a37df1889f2995a6270155543417e4",
+      "bytes": 47248,
+      "anchors": {
+        "ProgramImpl::ProgramImpl(": [
+          {
+            "line": 148,
+            "text": "ProgramImpl::ProgramImpl(const execution::Parameters& parameters_in, const SequencePlanImpl& plan,"
+          }
+        ],
+        "persistent(kv_arena": [
+          {
+            "line": 165,
+            "text": "persistent(kv_arena ? DeviceArena(kv_arena->arena()) : DeviceArena(plan.persistent.bytes)),"
+          }
+        ],
+        "decoder = std::make_unique<qwen3_5::DecoderState>": [
+          {
+            "line": 261,
+            "text": "decoder = std::make_unique<qwen3_5::DecoderState>(backings, plan.persistent.decoder);"
+          }
+        ],
+        "prepare_graphs();": [
+          {
+            "line": 559,
+            "text": "prepare_graphs();"
+          }
+        ],
+        "create_hybrid_prefix_cache(startup_observer);": [
+          {
+            "line": 568,
+            "text": "create_hybrid_prefix_cache(startup_observer);"
+          }
+        ],
+        "ProgramImpl::~ProgramImpl() noexcept": [
+          {
+            "line": 577,
+            "text": "ProgramImpl::~ProgramImpl() noexcept {"
+          }
+        ],
+        "flush_disk_tier();": [
+          {
+            "line": 578,
+            "text": "flush_disk_tier();"
+          }
+        ],
+        "ArenaMemorySummary{persistent.capacity()": [
+          {
+            "line": 796,
+            "text": "ArenaMemorySummary{persistent.capacity(), persistent.used(), persistent.peak_used()};"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/planning/startup.h": {
+      "sha256": "996f2d0aad9aef3515c29c7f67c8094b060e0456ecd0b3c757d40536f0afa510",
+      "bytes": 10574,
+      "anchors": {
+        "struct PersistentLayout {": [
+          {
+            "line": 38,
+            "text": "struct PersistentLayout {"
+          }
+        ],
+        "struct SequencePlanningInputs {": [
+          {
+            "line": 96,
+            "text": "struct SequencePlanningInputs {"
+          }
+        ],
+        "struct SequencePlanImpl {": [
+          {
+            "line": 130,
+            "text": "struct SequencePlanImpl {"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/planning/startup.cpp": {
+      "sha256": "193d76f07db0b808be2f9d1f80e0a46e6edda0a05cad82041c15744ca1bb05fe",
+      "bytes": 113132,
+      "anchors": {
+        "PersistentLayout persistent_layout(": [
+          {
+            "line": 192,
+            "text": "PersistentLayout persistent_layout(const SequencePlanImpl& plan) {"
+          }
+        ],
+        "out.decoder = qwen3_5::plan_decoder_state(": [
+          {
+            "line": 259,
+            "text": "out.decoder = qwen3_5::plan_decoder_state("
+          }
+        ],
+        "out.state_images =": [
+          {
+            "line": 305,
+            "text": "out.state_images ="
+          }
+        ],
+        "out.round = qwen3_5::begin_round_state_layout(": [
+          {
+            "line": 386,
+            "text": "out.round = qwen3_5::begin_round_state_layout("
+          }
+        ],
+        "out.bytes = builder.finish": [
+          {
+            "line": 424,
+            "text": "out.bytes = builder.finish(kArenaAlign, \"persistent layout\");"
+          }
+        ],
+        "out.lendable_kv_end_bytes =": [
+          {
+            "line": 443,
+            "text": "out.lendable_kv_end_bytes ="
+          }
+        ],
+        "impl->device_reservation_bytes =": [
+          {
+            "line": 1442,
+            "text": "impl->device_reservation_bytes = checked_add("
+          }
+        ],
+        "make_sequence_planner_impl(": [
+          {
+            "line": 1600,
+            "text": "make_sequence_planner_impl(const execution::Parameters& parameters, DeviceContext& device,"
+          }
+        ],
+        "const std::uint32_t minimum_pages =": [
+          {
+            "line": 1051,
+            "text": "const std::uint32_t minimum_pages ="
+          },
+          {
+            "line": 1724,
+            "text": "const std::uint32_t minimum_pages ="
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/prefix/hybrid_cache.cpp": {
+      "sha256": "f54fd344586616c618b488fcfe5c1b29ffefb028ee1a9fc44dd5c60f422afee2",
+      "bytes": 31360,
+      "anchors": {
+        "hipStreamCreateWithFlags(&restore_stream_": [
+          {
+            "line": 86,
+            "text": "CUDA_CHECK(hipStreamCreateWithFlags(&restore_stream_, hipStreamNonBlocking));"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/prefix/hybrid_cache.h": {
+      "sha256": "94b8800c9d540b82d8e2f72e81ddb7bfa81305716dfe4c35d133579b1f3d4d81",
+      "bytes": 15917,
+      "anchors": {
+        "hipStream_t restore_stream_": [
+          {
+            "line": 288,
+            "text": "hipStream_t restore_stream_   = nullptr;"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/prefix/hybrid_program.cpp": {
+      "sha256": "36434d7f1a46375784610053ecba7af29bb04eb9f40521960e077794f12af2cc",
+      "bytes": 72219,
+      "anchors": {
+        "void ProgramImpl::create_hybrid_prefix_cache(": [
+          {
+            "line": 128,
+            "text": "void ProgramImpl::create_hybrid_prefix_cache(const StartupObserver& observer) {"
+          }
+        ],
+        "context_cache.mode != ContextCacheMode::Hybrid": [
+          {
+            "line": 129,
+            "text": "if (context_cache.mode != ContextCacheMode::Hybrid || !context_cache.enabled ||"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/program/storage/context.cpp": {
+      "sha256": "4f617f49147dd70f6aac65c014c5450fef6426516fa5c07635469cde3356f472",
+      "bytes": 178309,
+      "anchors": {
+        "pages.physical_pool().free_runs().empty()": [
+          {
+            "line": 1637,
+            "text": "if (pages.physical_pool().free_runs().empty()) { break; }"
+          }
+        ]
+      }
+    },
+    "src/models/qwen3_5/execution/text.cpp": {
+      "sha256": "6bc2636496786bc2564d7ba8d35c7f307109c02b97fbaf59c7b477ee892c7aa3",
+      "bytes": 104039,
+      "anchors": {
+        "ops::causal_softmax_attention(": [
+          {
+            "line": 396,
+            "text": "ops::causal_softmax_attention("
+          },
+          {
+            "line": 410,
+            "text": "ops::causal_softmax_attention("
+          },
+          {
+            "line": 983,
+            "text": "ops::causal_softmax_attention("
+          },
+          {
+            "line": 992,
+            "text": "ops::causal_softmax_attention("
+          }
+        ],
+        "ops::causal_softmax_attention_cached(": [
+          {
+            "line": 577,
+            "text": "ops::causal_softmax_attention_cached("
+          }
+        ],
+        "ops::kv_cache_append(": [
+          {
+            "line": 529,
+            "text": "ops::kv_cache_append(kn, v, positions, mtp_kv_.layer_view(0), s);"
+          }
+        ],
+        "ops::sigmoid_mul_hadamard(gate, a,": [
+          {
+            "line": 1004,
+            "text": "ops::sigmoid_mul_hadamard(gate, a, p.output.hadamard_signs, gated, s);"
+          }
+        ]
+      }
+    }
+  },
+  "implemented_source_overlay": [
+    "startup.h internal default-false flag and external device-byte fields",
+    "startup.cpp explicit bounded planner/fresh payload/replanned ordinary layout/capacity accounting",
+    "program.cpp early fail-closed creation barrier for segmented plan"
+  ],
+  "not_implemented": [
+    "Program native factory member/initialization and tagged DecoderState",
+    "resident Program MemorySummary and separate host metadata telemetry",
+    "opaque public Program token methods",
+    "EngineCore startup/exit guard and sticky retirement-error reporting",
+    "CausalScoreCore startup/exit guard",
+    "full same-Core-ABI Models/runtime/cacheOps library graph",
+    "Text full-attention and planner/workspace selection of independent public B1 symbols",
+    "public Engine request flag and pre-weight-upload rejection gate"
+  ],
+  "required_stream_inventory": {
+    "single_rank": [
+      "rank(0).stream",
+      "rank(0).transfer_stream",
+      "rank(0).vision_stream if nonnull",
+      "default stream nullptr"
+    ],
+    "deduplicate_aliases": true,
+    "hybrid_restore_stream": "private; no getter; initial candidate rejects context_cache.enabled",
+    "native_storage_private_transfer": "internal, not capturable by caller; included in checked cold device synchronization"
+  },
+  "closed_initial_scope": [
+    "B1 context1..512 BF16 D256 H16/KV2 or H24/KV4",
+    "single rank/device",
+    "no speculative/copy proposer or Vision",
+    "FP32 GDN",
+    "physical>=logical",
+    "context cache explicitly disabled, disk absent, no ring/score/shadow/reuse"
+  ],
+  "allocation_contract": {
+    "before_new_program_resident_allocation": "guarded; flagged plans are currently always rejected",
+    "before_existing_weight_materialization": "NOT_IMPLEMENTED; existing runtime loads weights before sequence planning"
+  },
+  "runtime_qualified": false,
+  "worker_hook_implemented": false,
+  "old_archive_reuse_authorized": false,
+  "source_generation_or_compiler_or_hip_executed": false
+}

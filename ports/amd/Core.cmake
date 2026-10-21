@@ -136,6 +136,25 @@ include("${CMAKE_CURRENT_LIST_DIR}/memory/readonly_table/SegmentedBF16Readonly.c
 include("${CMAKE_CURRENT_LIST_DIR}/memory/b1_public/PublicBF16.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/memory/controller_handoff/ControllerHandoff.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/memory/models_storage/ModelsStorage.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/models_engine_ops/ModelsEngineOps.cmake")
+# The full ordinary cache and copied B1 dispatcher have separate route helpers.
+# Preserve both definitions and their bodies with target-private symbol names.
+if(TARGET ninfer_models_engine_b1_ops_amd)
+  target_compile_definitions(ninfer_models_engine_b1_ops_amd PRIVATE
+    small_t_i8_route_key=ninfer_amd_models_b1_small_t_i8_route_key
+    small_t_i8_routed_ctas_per_sm=ninfer_amd_models_b1_small_t_i8_routed_ctas_per_sm)
+endif()
+# The opt-in fixture includes the parent Core using its amd-memory/ prefix.
+# Keep this usage requirement local to the fixture; library source recipes stay frozen.
+if(TARGET ninfer_amd_models_engine_b1_ops_test)
+  target_include_directories(ninfer_amd_models_engine_b1_ops_test PRIVATE
+    "${NINFER_AMD_CONTROLLER_HANDOFF_VIEW}")
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/memory/models_engine_worker/ModelsEngineWorker.cmake")
+# Explicit default-OFF full-Core capacity test; no production gate or automatic run.
+include("${CMAKE_CURRENT_LIST_DIR}/memory/vision_segmented_capacity_test/VisionSegmentedCapacityTest.cmake")
+# Explicit default-OFF real Broker component and physical fixture.
+include("${CMAKE_CURRENT_LIST_DIR}/memory/segmented_vision_broker/SegmentedVisionBroker.cmake")
 # Experimental leaves share source inputs with ordinary Ops. CMake retains
 # lexical parent-directory aliases, whereas Ninja canonicalizes output paths.
 # Keep the complete regeneration dependency set with one absolute spelling.

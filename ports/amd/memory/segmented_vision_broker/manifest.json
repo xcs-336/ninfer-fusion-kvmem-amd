@@ -1,0 +1,22 @@
+{
+  "schema": "ninfer.segmented_vision_broker.manifest.v1",
+  "status": "SOURCE_ONLY_NOT_GENERATED_NOT_BUILT_NOT_RUN",
+  "capacity_source_sha256": {
+    "prepare_vision_segmented_capacity.py": "101de66a965b34a2fc2f48de12e1e55a39dd8076916653a532f1eb4a08cd30d1",
+    "manifest.json": "c7e3bbea2e1f42b46909b3f98b08e3bbcf41427d3381b9059790068aaf0b87d2",
+    "check_source.py": "0ecdd146f8e38dda14da9fa3517cba09f7006256c97bd239edb57520c528b1f4",
+    "README.md": "4d9b9b51c61e92721e1a948e724b4ead968f33352b27434a0617feb248b7e988"
+  },
+  "prepared_source_sha256": {
+    "src/models/qwen3_5/execution/vision_overlay.h": "3c9c8a7547af53eeb111fa17914d2034a4868537393d9aaa99ce9e8395cd99d3",
+    "src/models/qwen3_5/execution/vision_overlay.cpp": "ca5c3c7f7982f23e452321184c839313ef36f41943694403dff621cc26e37c75"
+  },
+  "core_compile_sources": 25,
+  "core_outputs": 67,
+  "component_outputs": 2,
+  "Session_or_Engine_gates_changed": false,
+  "original_quantization_and_Vision_Ops_extracted": false,
+  "raw_VMM_admission_gate_changed": false,
+  "new_component_raw_activation_requires_existing_gate": true,
+  "new_segmented_close_is_not_checked_WeightTail_restore": true
+}

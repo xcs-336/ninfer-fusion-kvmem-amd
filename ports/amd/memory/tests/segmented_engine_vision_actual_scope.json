@@ -1,0 +1,102 @@
+{
+  "status": "ACTUAL_COMPONENT_FUNCTIONAL_PASS_RESOURCE_UNQUALIFIED",
+  "date": "2026-10-21",
+  "platform": "Windows11/RadeonRX9070/gfx1201/wave32/AMDclang23/MSVC14.44",
+  "components": {
+    "capacity": {
+      "native_returncode": 0,
+      "guarded_runner_returncode": 125,
+      "actual_native_pid": 11876,
+      "actual_generated_files_verified": 67,
+      "native_result": {
+        "status": "REAL_CORE_CAPACITY_FIXTURE_PASSED",
+        "capacity_empty_attempts": 2,
+        "legacy_capacity_exception_exact": true,
+        "complete_all_cell_refusal_bytes": 524288,
+        "noncapacity_refusals": 7,
+        "real_unique_grant": true,
+        "copied_live_bytes": 131072,
+        "capacity_world_same_graph_replays": 7,
+        "pending_ordering_qualified": false,
+        "hip_fault_recovery_qualified": false,
+        "Vision_or_Engine_connected": false,
+        "production_gate_changed": false,
+        "link_map_requires_external_gate": true
+      },
+      "resources": {
+        "status": "RESOURCE_UNQUALIFIED",
+        "actual_native_pid": 11876,
+        "samples": 0,
+        "finite_gpu_samples": 0,
+        "gpu_counter_unavailable_samples": 0,
+        "events": [],
+        "guard_failed": false,
+        "minimum_host_free_mib": null,
+        "minimum_commit_headroom_mib": null,
+        "minimum_gpu_headroom_mib": null,
+        "continuous_peak_or_performance_evidence": false
+      },
+      "complete_Session_or_Engine_qualification": false,
+      "resource_saving_or_performance_claim": false,
+      "new_original_test_registration_passes": 0,
+      "actual_map_sha256": "db99a6c296c76da458f02b3742f032d299f72a9cee7ce833127b902d0533b134",
+      "local_actual_receipt_sha256": "76b410626c06ec0a813ea70e2d5ecd95954853de803b0c2574f262fc6f8af05b"
+    },
+    "production_vision_broker": {
+      "native_returncode": 0,
+      "guarded_runner_returncode": 125,
+      "actual_native_pid": 18068,
+      "actual_generated_files_verified": 69,
+      "native_result": {
+        "status": "REAL_BROKER_COMPONENT_CHECKS_PASSED",
+        "sameGraph_replays": 4,
+        "actual_typed_capacity_and_unique_grant": true,
+        "normal_WeightTail_bytes": true,
+        "semantic_close_retains_lent_poison": true,
+        "checked_WeightTail_restore_qualified": false,
+        "pending_ordering_qualified": false,
+        "Session_Engine_connected": false,
+        "production_gate_changed": false
+      },
+      "resources": {
+        "status": "RESOURCE_UNQUALIFIED",
+        "actual_native_pid": 18068,
+        "samples": 0,
+        "finite_gpu_samples": 0,
+        "gpu_counter_unavailable_samples": 0,
+        "events": [],
+        "guard_failed": false,
+        "minimum_host_free_mib": null,
+        "minimum_commit_headroom_mib": null,
+        "minimum_gpu_headroom_mib": null,
+        "continuous_peak_or_performance_evidence": false
+      },
+      "complete_Session_or_Engine_qualification": false,
+      "resource_saving_or_performance_claim": false,
+      "new_original_test_registration_passes": 0,
+      "actual_map_sha256": "d686ceecf0377f518e0736cc9067123e19107620d44371a4468beb5f8bfe5bf8",
+      "local_actual_receipt_sha256": "be16e276c0e190b8e3fdeb0a0590b8b1f58dde449416e78521c3fb5669c9275a"
+    }
+  },
+  "full_engine_candidate": {
+    "normal_configure_exit": 0,
+    "cache_translation_units_compiled": 51,
+    "b1_public_entry_compiled": true,
+    "next_heavy_translation_unit_completed": false,
+    "host_guard_abort_available_gib": 1.973,
+    "unchanged_host_floor_gib": 2,
+    "final_link_completed": false,
+    "combined_candidate_native_executions": 0
+  },
+  "all_new_options_default_off": true,
+  "production_gate_changed": false,
+  "formal_local_workflow_migrated": false,
+  "original_test_registration_counts": {
+    "exact_pass": 111,
+    "same_source_subset": 4,
+    "current_native_fail": 0,
+    "not_run": 44
+  },
+  "new_original_registration_count_increment": 0,
+  "no_speed_resource_or_full_history_qualification": true
+}

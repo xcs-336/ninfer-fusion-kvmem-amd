@@ -1,0 +1,22 @@
+{
+  "schema": "ninfer.vision_segmented_capacity.manifest.v1",
+  "status": "SOURCE_ONLY_NOT_GENERATED_NOT_BUILT_NOT_QUALIFIED",
+  "controller_receipt_sha256": "e276afe7279ba3fa6a024a4d50757030e42ffe83b072baabd1e5369c6d5183d0",
+  "controller_recipe_sha256": "d5baedccd248fa7299cd5a1254ba106ddba4f793be28bc38137a54144e6d18c5",
+  "controller_header_sha256": "59a815db1547c5246ce509769b7c4a71a8ce68cd86728f904ef3f307ca133a2c",
+  "storage_header_sha256": "382df2b0cd3870e106f9044fa58f9a7ede9b3dc5bba5e24e9a34dbfb8ce56bf3",
+  "storage_source_sha256": "0a002eac642b6c328461dff0f4945e0f9b455c516708883fcb8b67d33d5c18aa",
+  "planner_source_sha256": "ff7c29e6d985cbd7a21f5c2b592ce16c5eb8f6394b4158a5fb97ab31bc86a7cd",
+  "source_view_outputs": 67,
+  "core_compile_sources": 25,
+  "changed_outputs": [
+    "amd-memory/kv_segmented_storage.h",
+    "amd-memory/kv_segmented_storage.cpp"
+  ],
+  "production_gate_changed": false,
+  "cmake_wiring_added": false,
+  "vision_broker_connected": false,
+  "engine_provider_connected": false,
+  "raw_vmm_failure_history_retained": true,
+  "physical_hip_transaction_tests_run_for_this_revision": false
+}

@@ -1,0 +1,152 @@
+{
+  "schema": "ninfer.models_engine_ops.v1",
+  "status": "SOURCE_ONLY_NOT_BUILT_NOT_RUN_NOT_QUALIFIED",
+  "default_enabled": false,
+  "core_cmake_wired": false,
+  "new_sources_only": true,
+  "old_candidate_or_production_sources_changed": false,
+  "leaf": "ModelsEngineOps.cmake",
+  "option": "NINFER_AMD_MODELS_ENGINE_OPS",
+  "full_core_target": "ninfer_controller_handoff_core_amd",
+  "full_core_view_variable": "NINFER_AMD_CONTROLLER_HANDOFF_VIEW",
+  "b1_target": "ninfer_models_engine_b1_ops_amd",
+  "ordinary_cache_target": "ninfer_models_engine_cache_ops_amd",
+  "test_target": "ninfer_amd_models_engine_b1_ops_test",
+  "source_view_variable": "NINFER_AMD_MODELS_ENGINE_OPS_VIEW",
+  "public_include": "amd-models-b1/public_bf16.h",
+  "public_abi_macro": "NINFER_AMD_SEGMENTED_ENGINE_OPS_ABI=1",
+  "cache_original_manifests": [
+    "softmax_attention",
+    "softmax_attention/selected_block",
+    "kv_cache",
+    "context_kv_materialize",
+    "kv_stream"
+  ],
+  "ordinary_compilation_units": 51,
+  "native_family_text_files": 91,
+  "extra_pinned_paged_address_headers": 1,
+  "table_aware_math_compilation_units": 4,
+  "ordinary_nulltable_domain": "all original shapes/formats/entry points and implementation bodies retained; rebuilt against same full Core",
+  "ordinary_paged_public_entry_refusals": [
+    "kv_cache_append",
+    "kv_cache_append_prefix(PagedKVBatchLayerView)",
+    "causal_softmax_attention",
+    "causal_softmax_attention_cached",
+    "context_softmax_attention"
+  ],
+  "refusal_rule": "either K or V page table non-null rejects before original validation/workspace/launch",
+  "initial_table_domain": {
+    "batch": 1,
+    "visible_max": 512,
+    "width_max": 512,
+    "layout": "PageMajor",
+    "dtype": "BF16",
+    "heads": [
+      [
+        256,
+        24,
+        4
+      ],
+      [
+        256,
+        16,
+        2
+      ]
+    ],
+    "dense_history": true,
+    "dynamic_device_rows": true
+  },
+  "main_router": {
+    "one_sided_table": "reject",
+    "both_tables": "actual B1 public wrapper",
+    "both_null": "actual original ordinary wrapper"
+  },
+  "models_transforms": {
+    "execution/text.cpp": "only TextContext::attn_mix two calls; MTP calls preserved",
+    "planning/startup.cpp": "only target_body workspace query conditional on plan.segmented_text_storage",
+    "planning/graph_profiles.cpp": "identity; original and renamed B1 resolver/label complete-body equality required"
+  },
+  "separate_worker_owns": [
+    "Program creation/scope gate",
+    "full Models and Engine rebuild",
+    "single-payload planning and lifetime",
+    "startup-worker controller handoff",
+    "effective options",
+    "all live streams",
+    "Graph witness",
+    "final Engine map and runtime qualification"
+  ],
+  "fixture": {
+    "copied_original_b1_math_cases": 4,
+    "independent_arm_graphs_per_case": 2,
+    "phase_sequence_per_arm": [
+      0,
+      1,
+      0
+    ],
+    "captured_replays": 24,
+    "host_guard_cases": 15,
+    "host_route_label_checks": 14,
+    "math_oracles_criteria_changed": false,
+    "actual_new_abi_execution": "NOT_RUN"
+  },
+  "link_constraints": {
+    "no_old_core_or_partial_candidate": true,
+    "no_old_b1": true,
+    "no_original_cache_archive_or_consumer_member": true,
+    "basic": "actual Tensor-only TARGET_FILE + exact original-manifest member allowlist; no old Core PUBLIC interface",
+    "new_worker_core": "same ABI only; explicit worker archive selector; parent controller archive must not extract"
+  },
+  "tensor_only_unobservable_table_paths": [
+    {
+      "entry": "packed_softmax_attention/softmax_attention",
+      "definition": "original rebuilt body",
+      "initial_unreachable_reason": "Main invokes public causal only; no draft/packed execution admitted"
+    },
+    {
+      "entry": "sliding_window_attention(CyclicKVCacheLayerView)",
+      "definition": "original rebuilt body",
+      "initial_unreachable_reason": "D128/cyclic DFlash decoder is rejected by initial D256 BF16 NoSpec gate"
+    },
+    {
+      "entry": "context_kv_materialize(CyclicKVCacheLayerView)",
+      "definition": "original rebuilt body",
+      "initial_unreachable_reason": "only draft context path; NoDFlash/NoSpec admission"
+    },
+    {
+      "entry": "selected_block_attention and kv_stream",
+      "definition": "original rebuilt body",
+      "initial_unreachable_reason": "FlashNext/QSA/host streaming not part of Qwen3_5 dense B1 Main; no raw table adapter"
+    },
+    {
+      "entry": "KVMem harvest/mean-K/index/score",
+      "definition": "existing Tensor-only code; not declared segmented-aware",
+      "initial_unreachable_reason": "planner rejects score/shadow/retrieval; worker must retain the admission before any payload allocation"
+    }
+  ],
+  "not_claimed": [
+    "new ABI compiled or executed",
+    "ordinary domain newly numerically requalified",
+    "rotation qualified",
+    "full Engine linked or runnable",
+    "borrower benefit for pure text",
+    "performance gain",
+    "calibration grant"
+  ],
+  "worker_core_abi_identity_contract": {
+    "standalone_ops_provider": "ninfer_controller_handoff_core_amd",
+    "final_worker_selected_provider": "ninfer_models_engine_worker_core_amd",
+    "final_worker_links_ops_as_files_without_controller_interface": true,
+    "controller_view_and_source_receipt_sha256_required": true,
+    "worker_view_and_source_receipt_sha256_required": true,
+    "actual_small_output_bytes_rehashed_against_both_receipts": true,
+    "same_named_controller_outputs_must_match_except": [
+      "src/core/decode_graph.cpp"
+    ],
+    "worker_only_added_header": "private Graph observer header; exact path and SHA recorded by worker composer",
+    "all_core_header_and_forced_hip_intrinsics_bytes_identical": true,
+    "compile_sources": "exact actual controller complete Core list, no alternate layout or partial Core",
+    "final_map_rejects_parent_controller_extraction": true,
+    "proof_owner": "models_engine_worker composer; still SOURCE_ONLY, no generated worker receipt claimed"
+  }
+}
