@@ -1,0 +1,114 @@
+{
+  "status": "ACTUAL_SIX_CASE_ORIGINAL_BODY_BF16_TABLE_CONSUMER_FUNCTIONAL_PASS_NOT_ENGINE",
+  "date_utc": "2026-10-21",
+  "baseline": "1314521gjy/ninfer-fusion-kvmem@4e93bb8ab89b583653a9d16235582c688226ff05",
+  "platform": {
+    "os": "Windows 11",
+    "gpu": "AMD Radeon RX 9070",
+    "target": "gfx1201 wave32",
+    "compiler": "AMD clang 23",
+    "msvc": "14.44",
+    "driver": "32.0.31041.1004",
+    "hip_runtime_api_version": 70260201
+  },
+  "target": "ninfer_amd_segmented_bf16_attention_test --run",
+  "actual": {
+    "status": "FUNCTIONAL_ONLY_PASS",
+    "geometry_cases": 6,
+    "same_graph_replays": 18,
+    "output_checks": 1259520,
+    "independent_fp64": true,
+    "exact_cache_bytes": true,
+    "relocation_bit_parity": true,
+    "fresh_output_each_replay": true,
+    "fresh_append_rows_each_replay": true,
+    "pending_ordering_witnessed": false,
+    "concurrent_allocator_mutation_tested": false,
+    "production_gate": false,
+    "engine_qualification": false,
+    "performance_sample": false
+  },
+  "oracle": {
+    "independent": "full represented BF16 decode / FP64 QK-softmax-PV",
+    "relative_l2_max": 0.0028,
+    "max_abs_limit": "0.001 + (2/256)*max_abs_reference",
+    "finite_required": true,
+    "cache": "all live BF16 words exact",
+    "relocation": "bit-exact output",
+    "freshness": "output and append rows poisoned before each replay",
+    "borrowed_span": "all 0xd3 bytes preserved"
+  },
+  "shapes": {
+    "heads_kv_heads": [
+      [
+        24,
+        4
+      ],
+      [
+        16,
+        2
+      ]
+    ],
+    "d": 256,
+    "page_tokens": 64,
+    "modes": [
+      "T3 cached at 63..65",
+      "T3 inline-append at 127..129",
+      "T35 prompt at 95..129"
+    ]
+  },
+  "native_log": {
+    "path": "research\\ninfer-segmented-bf16-run-first-20261021.log",
+    "bytes": 710,
+    "sha256": "2fe38709550a789446dc0862ff416b9bb886f49f76cded7f3f97cfdd55845f35",
+    "mtime_utc": "2026-10-21T00:05:33.546654+00:00"
+  },
+  "actual_native_pid": 13760,
+  "wrapper_native_exit": 0,
+  "strict_link_map": {
+    "actual_bf16_map_lines": 3086,
+    "positive_formats": 5,
+    "negative_controls_rejected": 27,
+    "old_abi_members_rejected": true
+  },
+  "real_core_fixture": {
+    "status": "ACTUAL_BUILD_AND_MAP_PASS_NOT_RUN",
+    "actual_map_lines": 3101,
+    "build_log": {
+      "path": "research\\ninfer-segmented-realcore-build-first-20261021.log",
+      "bytes": 9455,
+      "sha256": "42351247ef3e396effeffe2a536fb310a020209b189f0d6a6321509c805a564d",
+      "mtime_utc": "2026-10-21T00:06:15.553282+00:00"
+    }
+  },
+  "resources": {
+    "explicit_device_max_bytes": 9529752,
+    "pinned_seed_max_bytes": 524288,
+    "table_shadow_bytes": 128,
+    "execution_shadow_bytes": 12,
+    "runtime_graph_event_overhead_extra": true,
+    "host_guard_min_available_gib": 5.074,
+    "fixture_runtime_reserve_floor_gib": [
+      0.05,
+      1,
+      2
+    ],
+    "continuous_gpu_or_rss_peak_measured": false
+  },
+  "original_registration_count_increment": 0,
+  "defaults": {
+    "NINFER_AMD_SEGMENTED_POOL": false,
+    "NINFER_AMD_SEGMENTED_BF16_OPS": false
+  },
+  "production_gate_changed": false,
+  "engine_qualified": false,
+  "performance_or_resource_saving_claim": false,
+  "remaining": [
+    "real Core fixture execution",
+    "readonly ISA/math comparison",
+    "actual public B1 dynamic row/gate",
+    "controller/Models/real borrower lifecycle",
+    "v6c timing rebuild/current-object ISA/diagnostic and independent clock accuracy",
+    "44 original registrations/full-history quality/stability/E2E benefit"
+  ]
+}

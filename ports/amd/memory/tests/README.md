@@ -114,3 +114,41 @@ Future qualification still needs concurrent allocator mutations, real driver-err
 and copy/table rollback, actual production Attention, complete resource receipts
 and separate performance evidence. The original
 raw-VMM diagnostics and their failed production gate remain unchanged.
+
+
+## Original pool and original-body BF16 consumer checkpoint (2026-10-21)
+
+Two additional leaves are included from Core.cmake, with both options default OFF.
+NINFER_AMD_SEGMENTED_POOL isolates the actual original allocator with typed ownership,
+mutation epochs and mapped Core transfers. NINFER_AMD_SEGMENTED_BF16_OPS adds the
+actual original BF16 append, small-T and prompt bodies with final-address indirection.
+Neither changes the production Engine or its non-contiguous-loan qualification gate.
+
+The BF16 executable actually passed six geometry/mode cases: H24/KV4 and H16/KV2,
+each cached small-T, inline-append small-T and prompt. Eighteen replays of the same
+Graph instances checked 1,259,520 outputs against the independent original FP64
+criterion, complete live KV bytes, relocation bit parity, input/guard preservation,
+fresh output and append writes on every replay, and the borrowed raw span. These
+cases use the real allocator and execution tables, including actual cross-plane
+physical relocation. They add zero original-registration passes. They do not test
+forced pending ordering or concurrent allocator mutation. The separate earlier
+pending-v2 test retains its own scope and cannot grant those properties here.
+
+The dedicated ninfer_amd_segmented_pool_test separately built and passed its actual
+link-map gate; it has NOT RUN. BF16 and Core maps reject old ABI Core/Op members.
+The LLD bare-archive-format parser correction was independently checked against the
+actual BF16 map, five positive formats and 27 negative controls. The mathematical
+bodies and error criteria were not changed to repair the map gate.
+
+Enable with NINFER_AMD_SEGMENTED_POOL=ON and NINFER_AMD_SEGMENTED_BF16_OPS=ON;
+explicit targets are ninfer_amd_segmented_pool_test and
+ninfer_amd_segmented_bf16_attention_test. Both executables require --run for HIP;
+the BF16 leaf adds no automatic GPU CTest. Use an explicitly owned resource window,
+the byte-0/process-job wrapper and host-budget/deadline admission. Exact scope,
+resource formulas and commands are in
+[the consumer document](../segmented_bf16_attention_source.md) and
+[the structured actual receipt](segmented_bf16_actual_scope.json).
+
+Public B1 dynamic rows/gates, worker/controller transfer, Models integration, the
+real borrower lifetime, complete resource accounting and E2E benefit remain open.
+There is no measured performance/resource-saving claim or formal workflow switch.

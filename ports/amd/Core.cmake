@@ -130,3 +130,5 @@ if(NOT _sync_status EQUAL 0)
 endif()
 include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedStorage.cmake")
 
+include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedPool.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedBF16Ops.cmake")
