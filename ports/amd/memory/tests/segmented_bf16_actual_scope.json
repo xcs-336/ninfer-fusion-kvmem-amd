@@ -72,13 +72,30 @@
     "old_abi_members_rejected": true
   },
   "real_core_fixture": {
-    "status": "ACTUAL_BUILD_AND_MAP_PASS_NOT_RUN",
+    "status": "ACTUAL_BUILD_MAP_AND_RUNTIME_FUNCTIONAL_PASS",
     "actual_map_lines": 3101,
     "build_log": {
       "path": "research\\ninfer-segmented-realcore-build-first-20261021.log",
       "bytes": 9455,
       "sha256": "42351247ef3e396effeffe2a536fb310a020209b189f0d6a6321509c805a564d",
       "mtime_utc": "2026-10-21T00:06:15.553282+00:00"
+    },
+    "runtime_actual": {
+      "status": "ORIGINAL_CORE_SEGMENTED_POOL_CHECKS_PASSED",
+      "original_allocator": true,
+      "full_byte_oracle": true,
+      "fragmented_plain_and_record_transfers": true,
+      "epoch_negative_control": true,
+      "observer_captures": 1,
+      "observer_same_instance_replays": 9,
+      "production_gate_changed": false,
+      "attention_math_qualified": false,
+      "link_map_requires_external_gate": true
+    },
+    "runtime_log": {
+      "path": "research\\ninfer-segmented-realcore-run-first-20261021.log",
+      "bytes": 643,
+      "sha256": "bdb380f07ad583609bd6d3e3656807365735d158fe4878d36ac1bdad25f8c613"
     }
   },
   "resources": {
@@ -110,5 +127,6 @@
     "controller/Models/real borrower lifecycle",
     "v6c timing rebuild/current-object ISA/diagnostic and independent clock accuracy",
     "44 original registrations/full-history quality/stability/E2E benefit"
-  ]
+  ],
+  "subsequent_closures": "segmented_closures_actual_scope.json"
 }

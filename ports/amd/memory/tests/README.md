@@ -135,7 +135,8 @@ forced pending ordering or concurrent allocator mutation. The separate earlier
 pending-v2 test retains its own scope and cannot grant those properties here.
 
 The dedicated ninfer_amd_segmented_pool_test separately built and passed its actual
-link-map gate; it has NOT RUN. BF16 and Core maps reject old ABI Core/Op members.
+link-map gate and has now passed its actual nine-replay byte/transfer fixture.
+BF16 and Core maps reject old ABI Core/Op members.
 The LLD bare-archive-format parser correction was independently checked against the
 actual BF16 map, five positive formats and 27 negative controls. The mathematical
 bodies and error criteria were not changed to repair the map gate.
@@ -152,3 +153,15 @@ resource formulas and commands are in
 Public B1 dynamic rows/gates, worker/controller transfer, Models integration, the
 real borrower lifetime, complete resource accounting and E2E benefit remain open.
 There is no measured performance/resource-saving claim or formal workflow switch.
+
+
+## Subsequent actual closures (2026-10-21)
+
+Readonly six-case/18-replay, public B1 four-case/24-replay/3,891,200-output,
+one-time full-Core controller four-replay and two-file Models storage two-geometry/
+six-replay fixtures all built, passed actual link maps and ran successfully.
+All options default OFF. Their own READMEs describe precise limits; machine-readable
+evidence is [segmented_closures_actual_scope.json](segmented_closures_actual_scope.json).
+These do not compose into a qualified Program/Engine or grant a performance/resource
+saving. Forced pending/concurrent allocator and injected driver-error qualifications
+remain separate from these new original-owner tests.

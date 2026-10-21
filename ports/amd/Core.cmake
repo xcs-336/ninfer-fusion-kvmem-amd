@@ -132,3 +132,18 @@ include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedStorage.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedPool.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/memory/SegmentedBF16Ops.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/readonly_table/SegmentedBF16Readonly.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/b1_public/PublicBF16.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/controller_handoff/ControllerHandoff.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/memory/models_storage/ModelsStorage.cmake")
+# Experimental leaves share source inputs with ordinary Ops. CMake retains
+# lexical parent-directory aliases, whereas Ninja canonicalizes output paths.
+# Keep the complete regeneration dependency set with one absolute spelling.
+get_property(_amd_configure_dependencies DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
+set(_amd_normalized_configure_dependencies)
+foreach(_amd_dependency IN LISTS _amd_configure_dependencies)
+  get_filename_component(_amd_absolute_dependency "${_amd_dependency}" ABSOLUTE)
+  list(APPEND _amd_normalized_configure_dependencies "${_amd_absolute_dependency}")
+endforeach()
+list(REMOVE_DUPLICATES _amd_normalized_configure_dependencies)
+set_property(DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS ${_amd_normalized_configure_dependencies})

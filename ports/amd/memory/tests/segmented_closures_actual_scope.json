@@ -1,0 +1,304 @@
+{
+  "status": "FIVE_ACTUAL_FUNCTIONAL_CLOSURES_PASS_NOT_COMPOSED_ENGINE",
+  "platform": "Windows11/RX9070/gfx1201/wave32/AMDclang23/MSVC14.44",
+  "baseline": "1314521gjy/ninfer-fusion-kvmem@4e93bb8ab89b583653a9d16235582c688226ff05",
+  "actual_receipts": {
+    "real_core": {
+      "status": "ACTUAL_ORIGINAL_CORE_SEGMENTED_POOL_RUNTIME_FUNCTIONAL_PASS_NOT_ENGINE",
+      "created_utc": "2026-10-21T04:51:31.916941+00:00",
+      "actual": {
+        "status": "ORIGINAL_CORE_SEGMENTED_POOL_CHECKS_PASSED",
+        "original_allocator": true,
+        "full_byte_oracle": true,
+        "fragmented_plain_and_record_transfers": true,
+        "epoch_negative_control": true,
+        "observer_captures": 1,
+        "observer_same_instance_replays": 9,
+        "production_gate_changed": false,
+        "attention_math_qualified": false,
+        "link_map_requires_external_gate": true
+      },
+      "native_pid": 21060,
+      "native_started_utc": "2026-10-21T04:49:12.830186+00:00",
+      "host_guard_min_available_gib": 4.397,
+      "host_fixture_reserve_floor_gib": [
+        0.02,
+        1,
+        2
+      ],
+      "log": {
+        "path": "research\\ninfer-segmented-realcore-run-first-20261021.log",
+        "bytes": 643,
+        "sha256": "bdb380f07ad583609bd6d3e3656807365735d158fe4878d36ac1bdad25f8c613"
+      },
+      "strict_map": {
+        "actual_lines": 3101,
+        "passed": true,
+        "math_or_performance_qualification": false
+      },
+      "pending_ordering_witnessed": false,
+      "concurrent_allocator_mutation_tested": false,
+      "original_registration_count_increment": 0,
+      "engine_qualified": false,
+      "performance_or_resource_saving_claim": false
+    },
+    "readonly": {
+      "status": "ACTUAL_READONLY_TABLE_SIX_CASE_FUNCTIONAL_PASS_AND_PAIRED_ISA_EXTRACTED_NOT_PERFORMANCE_QUALIFIED",
+      "created_utc": "2026-10-21T05:00:55.315875+00:00",
+      "actual": {
+        "status": "FUNCTIONAL_ONLY_PASS",
+        "geometry_cases": 6,
+        "same_graph_replays": 18,
+        "output_checks": 1259520,
+        "independent_fp64": true,
+        "exact_cache_bytes": true,
+        "relocation_bit_parity": true,
+        "fresh_output_each_replay": true,
+        "fresh_append_rows_each_replay": true,
+        "pending_ordering_witnessed": false,
+        "concurrent_allocator_mutation_tested": false,
+        "production_gate": false,
+        "engine_qualification": false,
+        "performance_sample": false
+      },
+      "native_pid": 2884,
+      "native_started_utc": "2026-10-21T04:54:35.904162+00:00",
+      "host_min_available_gib": 4.277,
+      "native_log": {
+        "path": "research\\ninfer-segmented-readonly-run-first-20261021.log",
+        "bytes": 709,
+        "sha256": "855ee5741e82ab7de56e2285ee9dd6651e59587262ac61e5b9c0c7005b72082e"
+      },
+      "actual_build_log": "research/ninfer-segmented-readonly-build-first-20261021.log",
+      "actual_isa_receipt": "research/ninfer-segmented-readonly-isa-first-20261021/extraction-receipt.json",
+      "paired_kernels": 32,
+      "static_dscnt_delta_histogram": {
+        "-2": 16,
+        "-4": 14,
+        "0": 2
+      },
+      "resource_fields_identical": [
+        "vgpr_count",
+        "sgpr_count",
+        "group_segment_fixed_size",
+        "private_segment_fixed_size",
+        "vgpr_spill_count",
+        "sgpr_spill_count",
+        "scratch_instruction_count"
+      ],
+      "private_segment_sizes": [
+        0,
+        200,
+        700,
+        704
+      ],
+      "private_memory_spills_exist": true,
+      "load_dependency_manual_review": "PENDING",
+      "source_build_freshness_manual_review": "PENDING",
+      "performance_or_resource_saving_claim": false,
+      "production_gate_changed": false,
+      "engine_qualified": false,
+      "original_registration_count_increment": 0
+    },
+    "public_b1": {
+      "status": "ACTUAL_PUBLIC_B1_DYNAMIC_ROW_AND_GATE_24_REPLAY_FUNCTIONAL_PASS_NOT_ENGINE",
+      "created_utc": "2026-10-21T05:16:05.966369+00:00",
+      "actual": {
+        "status": "FUNCTIONAL_ONLY_PASS",
+        "cases": 4,
+        "same_graph_replays": 24,
+        "output_checks": 3891200,
+        "independent_arm_graphs": true,
+        "dynamic_rows": true,
+        "changed_positions": true,
+        "fused_and_post_gate": true,
+        "fp64_attention_and_gate": true,
+        "full_cache_bytes": true,
+        "fresh_nan_append_output_and_partials_per_arm": true,
+        "engine_qualified": false,
+        "rotation_qualified": false,
+        "performance_sample": false
+      },
+      "native_pid": 16804,
+      "started_utc": "2026-10-21T05:14:14.178180+00:00",
+      "host_guard_min_available_gib": 4.815,
+      "native_log": {
+        "path": "research\\ninfer-segmented-b1-run-first-20261021.log",
+        "bytes": 682,
+        "sha256": "0f50708076d062175a96ff70c824c82546a1cb6a84352a297d1f3aadf844bd62"
+      },
+      "actual_build_log": "research/ninfer-segmented-b1-build-includefix-20261021.log",
+      "build_host_guard_min_available_gib": 3.128,
+      "actual_link_map_lines": 3866,
+      "source_freeze": "research/ninfer-segmented-b1-public-source-review-v6-buildfix.json",
+      "independent_buildfix_review": "research/ninfer-segmented-b1-v6-buildfix-independent-review.json",
+      "math_fixture_review": "research/ninfer-segmented-b1-public-independent-review-v4.json",
+      "production_gate_changed": false,
+      "engine_qualified": false,
+      "pending_or_concurrent_allocator_qualified": false,
+      "performance_or_resource_saving_claim": false,
+      "original_registration_count_increment": 0
+    },
+    "controller": {
+      "status": "ACTUAL_CONTROLLER_BUILD_MAP_RUNTIME_FUNCTIONAL_PASS_NOT_ENGINE",
+      "created_utc": "2026-10-21T05:25:03.328257+00:00",
+      "actual": {
+        "status": "FUNCTIONAL_CONTROLLER_HANDOFF_PASS",
+        "same_graph_replays": 4,
+        "cpu_raii_during_transit": true,
+        "wrong_owner_thread_and_reuse_rejected": true,
+        "live_freeze_open_grant_poison_capture_rejected": true,
+        "copy_compile_rejected": true,
+        "explicit_device0_bind": true,
+        "wrong_device_runtime_tested": false,
+        "device_sync_failure_injected": false,
+        "full_engine_supported": false,
+        "production_gate": false
+      },
+      "native_pid": 14352,
+      "started_utc": "2026-10-21T05:19:22.618146+00:00",
+      "host_guard_min_available_gib": 4.772,
+      "fixture_runtime_reserve_floor_gib": [
+        0.02,
+        1,
+        2
+      ],
+      "native_log": {
+        "path": "research\\ninfer-controller-run-first-20261021.log",
+        "bytes": 687,
+        "sha256": "528c3f269731a281083c5c05f5669200f6858015e5463ce921ce27d4d64d5cc1"
+      },
+      "build_log": "research\\ninfer-controller-build-first-20261021.log",
+      "build_guard_min_available_gib": 4.578,
+      "actual_link_map": {
+        "status": "NEW_FULL_CORE_LINK_CLOSURE_ONLY",
+        "positive_evidence": {
+          "fixture": {
+            "line": 93,
+            "text": " 0001:00000000       ?unused_frozen_original_pool_fixture_main@@YAHHPEAPEAD@Z 0000000140001000     test_controller_handoff.cu.obj"
+          },
+          "new_paged_core": {
+            "line": 284,
+            "text": " 0001:00013780       ?plan_device_kv_page_pool@ninfer@@YA?AUDeviceKVPagePoolLayout@1@AEAVLayoutBuilder@1@AEBUDeviceKVPagePoolSpec@1@@Z 0000000140014780     ninfer_controller_handoff_core_amd:paged_kv_cache.cpp.obj"
+          },
+          "new_controller_view": {
+            "line": 306,
+            "text": " 0001:000156d0       ?plane_view@DeviceKVPagePool@ninfer@@QEBA?AUDeviceKVPlaneView@2@_K@Z 00000001400166d0     ninfer_controller_handoff_core_amd:paged_kv_cache.cpp.obj"
+          },
+          "release": {
+            "line": 469,
+            "text": " 0001:000254c0       ?release_controller_for_worker@KVSegmentedPoolOwner@memory@amd@ninfer@@QEAA?AVKVControllerHandoffToken@234@V?$span@QEAUihipStream_t@@$0?0@std@@@Z 00000001400264c0     ninfer_controller_handoff_core_amd:kv_segmented_pool_owner.cpp.obj"
+          },
+          "consume": {
+            "line": 470,
+            "text": " 0001:000257b0       ?consume_controller_for_worker@KVSegmentedPoolOwner@memory@amd@ninfer@@QEAAX$$QEAVKVControllerHandoffToken@234@V?$span@QEAUihipStream_t@@$0?0@std@@@Z 00000001400267b0     ninfer_controller_handoff_core_amd:kv_segmented_pool_owner.cpp.obj"
+          },
+          "retire": {
+            "line": 471,
+            "text": " 0001:00025ae0       ?retire_controller_for_teardown@KVSegmentedPoolOwner@memory@amd@ninfer@@QEAAXV?$span@QEAUihipStream_t@@$0?0@std@@@Z 0000000140026ae0     ninfer_controller_handoff_core_amd:kv_segmented_pool_owner.cpp.obj"
+          },
+          "new_storage": {
+            "line": 505,
+            "text": " 0001:00026b90       ?host_page_address@KVSegmentedStorage@memory@amd@ninfer@@QEBAPEAXII@Z 0000000140027b90     ninfer_controller_handoff_core_amd:kv_segmented_storage.cpp.obj"
+          }
+        },
+        "old_core_or_old_candidate_extracted": false,
+        "line_count": 3463,
+        "runtime_qualified": false,
+        "map_path": "D:\\programfile\\work\\deepseek\\sources\\ninfer-fusion-kvmem\\ports\\amd\\build\\ninfer_amd_controller_handoff_test.map"
+      },
+      "independent_source_review": "research/ninfer-controller-handoff-independent-review-v3.json",
+      "pending_ordering_or_concurrent_allocator_qualified": false,
+      "engine_qualified": false,
+      "production_gate_changed": false,
+      "performance_or_resource_saving_claim": false,
+      "original_registration_count_increment": 0
+    },
+    "models_storage": {
+      "status": "ACTUAL_MODELS_STORAGE_BUILD_MAP_RUNTIME_FUNCTIONAL_PASS_NOT_ENGINE",
+      "created_utc": "2026-10-21T05:25:03.329256+00:00",
+      "actual": {
+        "status": "FUNCTIONAL_MODELS_STORAGE_PASS",
+        "same_graph_replays": 6,
+        "geometries": 2,
+        "attention_math_qualified": false,
+        "engine_integrated": false,
+        "production_gate": false
+      },
+      "native_pid": 13052,
+      "started_utc": "2026-10-21T05:21:19.110886+00:00",
+      "host_guard_min_available_gib": 4.863,
+      "fixture_runtime_reserve_floor_gib": [
+        0.05,
+        1,
+        2
+      ],
+      "native_log": {
+        "path": "research\\ninfer-models-storage-run-first-20261021.log",
+        "bytes": 467,
+        "sha256": "2854349b7cf459fd6ca7675105178e37cf0de5e886ac14827dfc145ae576bdcb"
+      },
+      "build_log": "research\\ninfer-models-storage-build-first-20261021.log",
+      "build_guard_min_available_gib": 4.744,
+      "actual_link_map": {
+        "status": "NEW_MODELS_FULL_CORE_LINK_CLOSURE_ONLY",
+        "positive_evidence": {
+          "fixture": {
+            "line": 92,
+            "text": " 0001:00000000       main                       0000000140001000     test_models_storage.cu.obj"
+          },
+          "new_split_planner": {
+            "line": 182,
+            "text": " 0001:00006330       ?plan_segmented_decoder_state@qwen3_5@models@ninfer@@YA?AUDecoderStateLayout@123@AEAVLayoutBuilder@3@0AEBUDecoderStateSpec@123@@Z 0000000140007330     ninfer_models_storage_candidate_amd:decoder_state.cpp.obj"
+          },
+          "new_models_constructor": {
+            "line": 183,
+            "text": " 0001:000066e0       ??0PagedKVCache@qwen3_5@models@ninfer@@QEAA@USegmentedDecoderStorageTag@123@UDeviceSpan@3@AEBUPagedKVCacheLayout@123@AEAVKVSegmentedNativePool@memory@amd@3@@Z 00000001400076e0     ninfer_models_storage_candidate_amd:decoder_state.cpp.obj"
+          },
+          "new_models_layer_view": {
+            "line": 190,
+            "text": " 0001:00007470       ?layer_view@PagedKVCacheView@qwen3_5@models@ninfer@@QEBA?AUPagedKVLayerView@4@I@Z 0000000140008470     ninfer_models_storage_candidate_amd:decoder_state.cpp.obj"
+          },
+          "new_core_pool": {
+            "line": 287,
+            "text": " 0001:0000c870       ?plan_device_kv_page_pool@ninfer@@YA?AUDeviceKVPagePoolLayout@1@AEAVLayoutBuilder@1@AEBUDeviceKVPagePoolSpec@1@@Z 000000014000d870     ninfer_controller_handoff_core_amd:paged_kv_cache.cpp.obj"
+          },
+          "new_core_plane_view": {
+            "line": 309,
+            "text": " 0001:0000e7c0       ?plane_view@DeviceKVPagePool@ninfer@@QEBA?AUDeviceKVPlaneView@2@_K@Z 000000014000f7c0     ninfer_controller_handoff_core_amd:paged_kv_cache.cpp.obj"
+          },
+          "new_native_owner": {
+            "line": 451,
+            "text": " 0001:0001cb00       ??0KVSegmentedPoolOwner@memory@amd@ninfer@@QEAA@AEBUConfig@KVSegmentedStorage@123@@Z 000000014001db00     ninfer_controller_handoff_core_amd:kv_segmented_pool_owner.cpp.obj"
+          },
+          "new_native_storage": {
+            "line": 502,
+            "text": " 0001:0001f7a0       ?host_page_address@KVSegmentedStorage@memory@amd@ninfer@@QEBAPEAXII@Z 00000001400207a0     ninfer_controller_handoff_core_amd:kv_segmented_storage.cpp.obj"
+          }
+        },
+        "old_archive_members_extracted": false,
+        "line_count": 3055,
+        "runtime_qualified": false,
+        "map_path": "D:\\programfile\\work\\deepseek\\sources\\ninfer-fusion-kvmem\\ports\\amd\\build\\ninfer_amd_models_segmented_storage_test.map"
+      },
+      "independent_source_review": "research/ninfer-models-storage-independent-review.json",
+      "pending_ordering_or_concurrent_allocator_qualified": false,
+      "engine_qualified": false,
+      "production_gate_changed": false,
+      "performance_or_resource_saving_claim": false,
+      "original_registration_count_increment": 0
+    }
+  },
+  "all_new_options_default_off": true,
+  "production_gate_changed": false,
+  "engine_qualified": false,
+  "performance_or_resource_saving_claim": false,
+  "original_registration_count_increment": 0,
+  "remaining": [
+    "complete Program planner/billing/ownership and runtime worker hooks",
+    "all actual cache-consuming Ops rebuilt against the same ABI",
+    "real borrower complete stream/exception/return lifetime",
+    "async timing accuracy and repeated benefit evidence",
+    "44 original registrations/full-history quality/stability/E2E or material resource benefit"
+  ]
+}

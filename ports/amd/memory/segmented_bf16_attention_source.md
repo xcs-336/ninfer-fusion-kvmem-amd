@@ -172,7 +172,8 @@ exact archive/member identities and rejecting prefixed impostors and old members
 An independent audit accepted the actual 3,086-line BF16 map, five positive
 formats and rejected 27 negative controls. The gate was repaired, not bypassed.
 The dedicated original-Core fixture separately built and passed its 3,101-line
-map gate, but has not yet executed. It must not be reported as a runtime pass.
+map gate and subsequently passed its actual nine-replay byte/fragmented-transfer
+fixture. Its separate runtime receipt is included in the combined scope below.
 
 Native log: `ninfer-segmented-bf16-run-first-20261021.log`, exit0,
 SHA256 `2fe38709550a789446dc0862ff416b9bb886f49f76cded7f3f97cfdd55845f35`.
